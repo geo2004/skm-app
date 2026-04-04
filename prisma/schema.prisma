@@ -1,0 +1,38 @@
+// SKM BP3KP Jawa III - Prisma Schema
+// Permenpan-RB No. 14 Tahun 2017
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = env("DATABASE_PROVIDER")
+  url      = env("DATABASE_URL")
+}
+
+model Response {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  // Data Responden
+  phone       String
+  email       String
+  age         Int
+  gender      String   // "Laki-laki" | "Perempuan"
+  education   String   // "SD" | "SMP" | "SMA" | "D3" | "S1" | "S2" | "S3"
+  unitLayanan String
+  // 9 Unsur SKM (Permenpan-RB No. 14/2017) — nilai 1-4
+  q1          Int      // U1: Persyaratan
+  q2          Int      // U2: Prosedur
+  q3          Int      // U3: Waktu Penyelesaian
+  q4          Int      // U4: Biaya/Tarif
+  q5          Int      // U5: Produk Spesifikasi Layanan
+  q6          Int      // U6: Kompetensi Pelaksana
+  q7          Int      // U7: Perilaku Pelaksana
+  q8          Int      // U8: Penanganan Pengaduan
+  q9          Int      // U9: Sarana dan Prasarana
+  // Pertanyaan terbuka
+  q10a        String?  // Hal yang kurang berkenan
+  q10b        String?  // Hal yang paling berkesan
+  // Pertanyaan khusus program bantuan perumahan (JSON)
+  specificData String?
+}

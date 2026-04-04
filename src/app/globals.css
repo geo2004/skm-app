@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --pkp-teal:      #113F51;
+  --pkp-teal-mid:  #0E5B73;
+  --pkp-gold:      #D5C58A;
+  --pkp-gold-dark: #CDB278;
+  --pkp-bg:        #f5f7f8;
+}
+
+body {
+  background: var(--pkp-bg);
+  color: #1a1a1a;
+  font-family: 'Inter', 'Poppins', Arial, sans-serif;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: 'Poppins', 'Inter', Arial, sans-serif;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+}
+.print-only { display: none; }
