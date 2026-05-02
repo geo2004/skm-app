@@ -1,6 +1,7 @@
 "use client"
 import { useState, FormEvent } from "react"
 import Image from "next/image"
+import { QRCodeSVG } from "qrcode.react"
 import {
   UNIT_LAYANAN_OPTIONS,
   EDUCATION_OPTIONS,
@@ -8,6 +9,8 @@ import {
   OFFICE_NAME,
   SURVEY_YEAR,
 } from "@/lib/constants"
+
+const SURVEY_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000") + "/survey"
 
 const LOGO_URL = "/logo_pkp.png"
 
@@ -148,12 +151,19 @@ export default function BukuTamuPage() {
                 </p>
                 <p className="text-sm text-gray-500 mt-1">Data Anda telah tercatat.</p>
               </div>
+
+              {/* QR Code */}
+              <div className="flex flex-col items-center gap-2 py-2">
+                <QRCodeSVG value={SURVEY_URL} size={160} />
+                <p className="text-xs text-gray-400 break-all">{SURVEY_URL}</p>
+              </div>
+
               <div className="rounded-lg p-4 text-sm text-left" style={{ background: "#f0f8fa", borderLeft: "3px solid #D5C58A" }}>
-                <p className="font-semibold mb-1" style={{ color: "#113F51" }}>Langkah selanjutnya:</p>
-                <ol className="text-gray-600 space-y-1 list-decimal list-inside">
-                  <li>Silakan menuju loket layanan yang dituju.</li>
-                  <li>Setelah selesai dilayani, scan QR code yang tersedia.</li>
-                  <li>Isi Survei Kepuasan — data Anda akan terisi otomatis.</li>
+                <p className="font-semibold mb-2" style={{ color: "#113F51" }}>Langkah selanjutnya:</p>
+                <ol className="text-gray-600 space-y-2 list-decimal list-inside">
+                  <li>Silakan duduk di ruang tunggu layanan, petugas layanan yang ditunjuk akan menemui anda.</li>
+                  <li>Setelah selesai, mohon scan QR code di atas.</li>
+                  <li>Mohon dapat mengisi Survei Kepuasan Layanan sesuai alamat web pada QR Code, masukan anda akan sangat berarti bagi perbaikan layanan kami kedepan, terimakasih.</li>
                 </ol>
               </div>
             </div>
