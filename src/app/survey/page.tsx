@@ -33,8 +33,9 @@ const EMPTY: FormData = {
   q10a: "", q10b: "",
 }
 
-const BASE_STEPS = ["Unit Layanan", "Data Diri", "Penilaian", "Catatan & Kirim"]
-const HOUSING_STEPS = ["Unit Layanan", "Data Diri", "Penilaian", "Info Bantuan", "Catatan & Kirim"]
+// Step 0 = Verifikasi (new), steps 1–N are the original steps shifted by 1
+const BASE_STEPS    = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Catatan & Kirim"]
+const HOUSING_STEPS = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Info Bantuan", "Catatan & Kirim"]
 
 export default function SurveyPage() {
   const router = useRouter()
@@ -43,14 +44,20 @@ export default function SurveyPage() {
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
+  // Buku Tamu lookup state
+  const [lookupPhone, setLookupPhone] = useState("")
+  const [looking, setLooking] = useState(false)
+  const [lookupResult, setLookupResult] = useState<"idle" | "found" | "notfound">("idle")
+  const [bukuTamuId, setBukuTamuId] = useState<number | null>(null)
+  const [prefillName, setPrefillName] = useState("")
+
   const isHousingProgram = (HOUSING_PROGRAM_KEYS as readonly string[]).includes(form.unitLayanan)
   const activeSteps = isHousingProgram ? HOUSING_STEPS : BASE_STEPS
   const totalSteps = activeSteps.length
   const finalStep = totalSteps - 1
 
-  // Step 3 is housing-specific questions when housing program is selected
-  // Otherwise step 3 is the final open-ended step
-  const isSpecificStep = step === 3 && isHousingProgram
+  // With the new Verifikasi step at index 0, Penilaian is now index 3
+  const isSpecificStep = step === 4 && isHousingProgram
   const isFinalStep = step === finalStep
 
   const programQuestions = PROGRAM_SPECIFIC_QUESTIONS[form.unitLayanan] ?? []
@@ -59,9 +66,52 @@ export default function SurveyPage() {
     setForm((f) => ({ ...f, [key]: val }))
   }
 
+  async function handleLookup() {
+    if (!lookupPhone || lookupPhone.trim().length < 8) {
+      setError("Masukkan nomor HP yang valid (minimal 8 digit).")
+      return
+    }
+    setError(""); setLooking(true)
+    try {
+      const res = await fetch(`/api/tamu?phone=${encodeURIComponent(lookupPhone.trim())}`)
+      const data = await res.json()
+      if (data.found) {
+        setBukuTamuId(data.id)
+        setPrefillName(data.nama)
+        setForm((f) => ({
+          ...f,
+          phone: data.phone ?? lookupPhone.trim(),
+          email: data.email ?? "",
+          age: String(data.age ?? ""),
+          gender: data.gender ?? "",
+          education: data.education ?? "",
+          unitLayanan: data.unitLayanan ?? "",
+          consent: true,
+        }))
+        setLookupResult("found")
+        // Jump directly to Penilaian (step 3)
+        setTimeout(() => { setStep(3); window.scrollTo(0, 0) }, 800)
+      } else {
+        setLookupResult("notfound")
+      }
+    } catch {
+      setError("Tidak dapat terhubung ke server.")
+    } finally {
+      setLooking(false)
+    }
+  }
+
+  function skipToManual() {
+    setLookupResult("idle")
+    setError("")
+    setStep(1)
+    window.scrollTo(0, 0)
+  }
+
   function validateStep(): string {
-    if (step === 0 && !form.unitLayanan) return "Pilih unit layanan terlebih dahulu."
-    if (step === 1) {
+    if (step === 0) return "" // Verifikasi — no required fields
+    if (step === 1 && !form.unitLayanan) return "Pilih unit layanan terlebih dahulu."
+    if (step === 2) {
       if (!form.phone || form.phone.trim().length < 8) return "Nomor HP tidak valid."
       if (!form.email || !form.email.includes("@")) return "Email tidak valid."
       const age = Number(form.age)
@@ -70,7 +120,7 @@ export default function SurveyPage() {
       if (!form.education) return "Pilih pendidikan terakhir."
       if (!form.consent) return "Anda harus menyetujui pernyataan persetujuan data."
     }
-    if (step === 2) {
+    if (step === 3) {
       for (const q of SURVEY_QUESTIONS) {
         if (!(form[q.id as keyof FormData] as number)) return `Harap jawab pertanyaan: ${q.label}`
       }
@@ -104,6 +154,7 @@ export default function SurveyPage() {
         specificData: isHousingProgram && Object.keys(form.specificData).length > 0
           ? form.specificData
           : null,
+        bukuTamuId,
       }
       const res = await fetch("/api/responses", {
         method: "POST",
@@ -130,7 +181,6 @@ export default function SurveyPage() {
             <p className="text-white/50 text-xs">SKM {SURVEY_YEAR}</p>
           </div>
         </nav>
-        {/* Gold accent line */}
         <div style={{ background: "#D5C58A", height: "3px" }} />
       </header>
 
@@ -158,20 +208,76 @@ export default function SurveyPage() {
 
       <div className="max-w-xl mx-auto px-4 py-6">
         {error && (
-          <div
-            className="border-l-4 rounded-lg p-4 mb-4 text-sm"
-            style={{ background: "#fff3cd", borderColor: "#CDB278", color: "#856404" }}
-          >
+          <div className="border-l-4 rounded-lg p-4 mb-4 text-sm"
+            style={{ background: "#fff3cd", borderColor: "#CDB278", color: "#856404" }}>
             ⚠ {error}
           </div>
         )}
 
-        {/* Step 0: Unit Layanan */}
+        {/* Step 0: Verifikasi — phone lookup */}
         {step === 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
             <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
               <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                Langkah 1 — Unit Layanan
+                Verifikasi Pendaftaran
+              </h2>
+              <p className="text-white/60 text-xs mt-0.5">Masukkan nomor HP yang Anda daftarkan di Buku Tamu</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {lookupResult === "found" ? (
+                <div className="rounded-lg p-4 text-sm" style={{ background: "#d1fae5", borderLeft: "3px solid #16a34a" }}>
+                  <p className="font-semibold text-green-800">Data ditemukan!</p>
+                  <p className="text-green-700 mt-0.5">Halo, <strong>{prefillName}</strong>. Data Anda telah terisi otomatis.</p>
+                  <p className="text-green-600 text-xs mt-1">Mengalihkan ke halaman penilaian...</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
+                    <input
+                      type="tel"
+                      placeholder="08xxxxxxxxxx"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+                      value={lookupPhone}
+                      onChange={(e) => { setLookupPhone(e.target.value); setLookupResult("idle") }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLookup() } }}
+                    />
+                  </div>
+
+                  {lookupResult === "notfound" && (
+                    <div className="rounded-lg p-3 text-sm" style={{ background: "#fff3cd", borderLeft: "3px solid #CDB278", color: "#856404" }}>
+                      Data tidak ditemukan untuk nomor ini hari ini. Silakan isi formulir secara manual.
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleLookup}
+                    disabled={looking}
+                    className="w-full py-2.5 rounded-lg font-semibold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                    style={{ background: "#0E5B73" }}
+                  >
+                    {looking ? "Mencari..." : "Cari Data →"}
+                  </button>
+
+                  <div className="text-center">
+                    <button type="button" onClick={skipToManual}
+                      className="text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2">
+                      Tidak terdaftar? Isi manual
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Unit Layanan */}
+        {step === 1 && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
+            <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
+              <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
+                Langkah 2 — Unit Layanan
               </h2>
             </div>
             <div className="p-6">
@@ -195,12 +301,12 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 1: Data Diri */}
-        {step === 1 && (
+        {/* Step 2: Data Diri */}
+        {step === 2 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
             <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
               <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                Langkah 2 — Data Diri
+                Langkah 3 — Data Diri
               </h2>
             </div>
             <div className="p-6 space-y-4">
@@ -208,7 +314,6 @@ export default function SurveyPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP *</label>
                 <input type="tel" placeholder="08xxxxxxxxxx"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
-                  style={{ ["--tw-ring-color" as string]: "#0E5B73" }}
                   value={form.phone} onChange={(e) => set("phone", e.target.value)} />
               </div>
               <div>
@@ -258,13 +363,19 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 2: Penilaian (9 unsur SKM) */}
-        {step === 2 && (
+        {/* Step 3: Penilaian (9 unsur SKM) */}
+        {step === 3 && (
           <div className="space-y-4">
+            {bukuTamuId && (
+              <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "#d1fae5", borderLeft: "3px solid #16a34a" }}>
+                <span className="text-green-800 font-medium">Data diri terisi otomatis</span>
+                <span className="text-green-700"> — silakan lanjutkan penilaian layanan.</span>
+              </div>
+            )}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
               <div className="px-6 py-4" style={{ background: "#113F51" }}>
                 <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                  Langkah 3 — Penilaian Pelayanan
+                  {bukuTamuId ? "Langkah 2" : "Langkah 4"} — Penilaian Pelayanan
                 </h2>
                 <p className="text-white/60 text-xs mt-0.5">Pilih satu jawaban untuk setiap pertanyaan berikut</p>
               </div>
@@ -292,13 +403,13 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 3 (housing only): Program-specific questions */}
+        {/* Step 4 (housing only): Program-specific questions */}
         {isSpecificStep && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
               <div className="px-6 py-4" style={{ background: "#113F51" }}>
                 <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                  Langkah 4 — Evaluasi Bantuan
+                  Langkah 5 — Evaluasi Bantuan
                 </h2>
                 <p className="text-white/60 text-xs mt-0.5">{form.unitLayanan}</p>
               </div>
@@ -334,7 +445,7 @@ export default function SurveyPage() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
               <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
                 <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                  Langkah {totalSteps} — Masukan Anda
+                  Langkah {bukuTamuId ? "3" : String(totalSteps)} — Masukan Anda
                 </h2>
               </div>
               <div className="p-6 space-y-5">
@@ -355,7 +466,6 @@ export default function SurveyPage() {
                     value={form.q10b} onChange={(e) => set("q10b", e.target.value)} />
                 </div>
 
-                {/* Summary */}
                 <div className="rounded-lg p-4 text-sm" style={{ background: "#f0f8fa", borderLeft: "3px solid #D5C58A" }}>
                   <p className="font-semibold mb-1" style={{ color: "#113F51" }}>Ringkasan Jawaban:</p>
                   <p className="text-gray-600">Unit Layanan: <span className="font-medium">{form.unitLayanan}</span></p>
@@ -395,7 +505,7 @@ export default function SurveyPage() {
               ← Kembali
             </button>
           ) : <div />}
-          {!isFinalStep && (
+          {!isFinalStep && step > 0 && (
             <button type="button" onClick={next}
               className="px-6 py-2.5 rounded-lg font-semibold text-white text-sm hover:opacity-90"
               style={{ background: "#0E5B73" }}>

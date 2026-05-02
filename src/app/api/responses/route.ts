@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { phone, email, age, gender, education, unitLayanan,
-          q1, q2, q3, q4, q5, q6, q7, q8, q9, q10a, q10b, specificData } = body
+          q1, q2, q3, q4, q5, q6, q7, q8, q9, q10a, q10b, specificData,
+          bukuTamuId } = body
 
   // Validate required fields
   if (!phone || typeof phone !== "string" || phone.trim().length < 8) {
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
       specificData: specificData && typeof specificData === "object"
         ? JSON.stringify(specificData)
         : null,
+      bukuTamuId: typeof bukuTamuId === "number" ? bukuTamuId : null,
     },
   })
 

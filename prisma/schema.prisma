@@ -6,8 +6,23 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model BukuTamu {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  nama        String
+  phone       String
+  email       String?
+  age         Int
+  gender      String
+  education   String
+  unitLayanan String
+  keperluan   String?
+  response    Response?
 }
 
 model Response {
@@ -35,4 +50,7 @@ model Response {
   q10b        String?  // Hal yang paling berkesan
   // Pertanyaan khusus program bantuan perumahan (JSON)
   specificData String?
+  // Link ke Buku Tamu (opsional)
+  bukuTamuId  Int?      @unique
+  bukuTamu    BukuTamu? @relation(fields: [bukuTamuId], references: [id])
 }
