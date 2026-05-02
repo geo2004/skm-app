@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { OFFICE_NAME } from "@/lib/constants"
 
-const LOGO_URL =
-  "https://pkp.go.id/s3/website-perumahan/prod-storage/p2p-jawa-iii/logo_atas/01hr6kpg7t3q91g3b60f0e8qd2/01jsx5vvahcqwyxcgvz4bscjat.webp"
+const LOGO_URL = "/logo_pkp.png"
 
 export default function LoginPage() {
   const router = useRouter()
