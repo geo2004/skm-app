@@ -161,7 +161,7 @@ export default function BukuTamuPage() {
                   className="mt-2 inline-block w-full py-3 rounded-lg font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity"
                   style={{ background: "#0E5B73", fontFamily: "Poppins, sans-serif" }}
                 >
-                  Isi Survei Sekarang →
+                  Survei Kepuasan Layanan →
                 </a>
               </div>
 
