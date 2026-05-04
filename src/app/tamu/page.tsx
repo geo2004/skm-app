@@ -156,6 +156,13 @@ export default function BukuTamuPage() {
               <div className="flex flex-col items-center gap-2 py-2">
                 <QRCodeSVG value={SURVEY_URL} size={160} />
                 <p className="text-xs text-gray-400 break-all">{SURVEY_URL}</p>
+                <a
+                  href={SURVEY_URL}
+                  className="mt-2 inline-block w-full py-3 rounded-lg font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity"
+                  style={{ background: "#0E5B73", fontFamily: "Poppins, sans-serif" }}
+                >
+                  Isi Survei Sekarang →
+                </a>
               </div>
 
               <div className="rounded-lg p-4 text-sm text-left" style={{ background: "#f0f8fa", borderLeft: "3px solid #D5C58A" }}>
