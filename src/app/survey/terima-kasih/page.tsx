@@ -1,4 +1,3 @@
-import Link from "next/link"
 import Image from "next/image"
 import { OFFICE_NAME, SURVEY_YEAR } from "@/lib/constants"
 
@@ -43,11 +42,12 @@ export default function TerimaKasihPage() {
               <p className="text-xs text-gray-400">Tahun {SURVEY_YEAR}</p>
             </div>
 
-            <Link href="/"
+            <a
+              href="https://griya-app.vercel.app"
               className="inline-block w-full py-3 px-6 rounded-lg font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: "#0E5B73", fontFamily: "Poppins, sans-serif" }}>
-              ← Kembali ke Beranda
-            </Link>
+              ← Kembali ke GRIYA App
+            </a>
           </div>
         </div>
       </div>

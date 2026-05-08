@@ -104,6 +104,12 @@ export default function BukuTamuPage() {
             <p className="text-white text-xs font-semibold leading-tight">{OFFICE_NAME}</p>
             <p className="text-white/50 text-xs">Buku Tamu {SURVEY_YEAR}</p>
           </div>
+          <a
+            href="https://griya-app.vercel.app"
+            className="ml-auto text-xs text-white/60 hover:text-white flex items-center gap-1 transition-colors"
+          >
+            ← GRIYA App
+          </a>
         </nav>
         <div style={{ background: "#D5C58A", height: "3px" }} />
       </header>
