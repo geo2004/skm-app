@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma"
-import { SURVEY_QUESTIONS } from "@/lib/constants"
 import ResponsesTable from "@/components/responses/ResponsesTable"
 
 export const dynamic = "force-dynamic"
@@ -48,7 +47,6 @@ export default async function ResponsesPage({
         page={page}
         totalPages={Math.ceil(total / limit)}
         search={search}
-        questions={SURVEY_QUESTIONS}
       />
     </div>
   )

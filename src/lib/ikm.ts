@@ -1,30 +1,38 @@
 // Perhitungan IKM berdasarkan Permenpan-RB No. 14 Tahun 2017
-// IKM per unsur = NRR × 25 (NRR = rata-rata nilai 1-4)
-// IKM Unit Layanan = rata-rata dari 9 IKM unsur
+// Kuesioner Hybrid: 19 sub-questions mapped to 9 unsur
+// Legacy format: q1-q9 direct mapping
 
-import { IKM_CATEGORIES, IKMCategory, SURVEY_QUESTIONS, AGE_GROUPS } from "./constants"
+import { IKM_CATEGORIES, IKMCategory, IKM_UNSUR_LABELS, AGE_GROUPS } from "./constants"
 
 export interface ResponseData {
-  q1: number
-  q2: number
-  q3: number
-  q4: number
-  q5: number
-  q6: number
-  q7: number
-  q8: number
-  q9: number
+  // Demographics
   gender: string
   education: string
-  age: number
   unitLayanan: string
+  age?: number | null          // integer — legacy responses only
+  ageGroup?: string | null     // string group — new responses
+  pekerjaan?: string | null
+  isDisabilitas?: boolean | null
+  jenisDisabilitas?: string | null
+  // Legacy questions (q1-q9)
+  q1?: number | null; q2?: number | null; q3?: number | null
+  q4?: number | null; q5?: number | null; q6?: number | null
+  q7?: number | null; q8?: number | null; q9?: number | null
+  // New questions (nq1-nq16b)
+  nq1?: number | null;  nq2?: number | null;  nq3?: number | null
+  nq4?: number | null;  nq5?: number | null;  nq6?: number | null
+  nq7?: number | null;  nq8?: number | null;  nq9?: number | null
+  nq10?: number | null; nq11a?: number | null; nq11b?: number | null
+  nq12a?: number | null; nq12b?: number | null; nq13?: number | null
+  nq14?: number | null; nq15?: number | null
+  nq16a?: number | null; nq16b?: number | null
 }
 
 export interface UnsurResult {
   key: string
   label: string
-  nrr: number       // Rata-rata 1-4
-  ikm: number       // NRR × 25 (0-100)
+  nrr: number      // average score 1-4
+  ikm: number      // NRR × 25 (0-100)
   category: IKMCategory
 }
 
@@ -40,9 +48,68 @@ export interface DemographicData {
   education: Record<string, number>
   ageGroup: Record<string, number>
   unitLayanan: Record<string, number>
+  pekerjaan: Record<string, number>
+  disabilitas: Record<string, number>
 }
 
-const Q_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"] as const
+// Mapping of new hybrid questions to 9 unsur IKM
+// For each unsur, derive a single 1-4 score from whichever format the response uses
+const UNSUR_DEFS: Array<{
+  key: string
+  label: string
+  getScore: (r: ResponseData) => number | null
+}> = [
+  {
+    key: "U1", label: "Persyaratan",
+    getScore: (r) => r.nq1 != null && r.nq2 != null
+      ? (r.nq1 + r.nq2) / 2
+      : (r.q1 ?? null),
+  },
+  {
+    key: "U2", label: "Prosedur",
+    getScore: (r) => r.nq3 != null && r.nq4 != null && r.nq5 != null
+      ? (r.nq3 + r.nq4 + r.nq5) / 3
+      : (r.q2 ?? null),
+  },
+  {
+    key: "U3", label: "Waktu Penyelesaian",
+    getScore: (r) => r.nq6 != null ? r.nq6 : (r.q3 ?? null),
+  },
+  {
+    key: "U4", label: "Biaya/Tarif",
+    getScore: (r) => r.nq7 != null && r.nq8 != null && r.nq9 != null
+      ? (r.nq7 + r.nq8 + r.nq9) / 3
+      : (r.q4 ?? null),
+  },
+  {
+    key: "U5", label: "Produk Layanan",
+    getScore: (r) => r.nq10 != null ? r.nq10 : (r.q5 ?? null),
+  },
+  {
+    key: "U6", label: "Kompetensi Pelaksana",
+    getScore: (r) => r.nq11a != null && r.nq11b != null
+      ? (r.nq11a + r.nq11b) / 2
+      : (r.q6 ?? null),
+  },
+  {
+    key: "U7", label: "Perilaku Pelaksana",
+    getScore: (r) => r.nq12a != null && r.nq12b != null && r.nq13 != null
+      ? (r.nq12a + r.nq12b + r.nq13) / 3
+      : (r.q7 ?? null),
+  },
+  {
+    key: "U8", label: "Penanganan Pengaduan",
+    getScore: (r) => r.nq14 != null && r.nq15 != null
+      ? (r.nq14 + r.nq15) / 2
+      : (r.q8 ?? null),
+  },
+  {
+    key: "U9", label: "Sarana dan Prasarana",
+    getScore: (r) => r.nq16a != null && r.nq16b != null
+      ? (r.nq16a + r.nq16b) / 2
+      : (r.q9 ?? null),
+  },
+]
 
 export function getIKMCategory(score: number): IKMCategory {
   return (
@@ -51,18 +118,29 @@ export function getIKMCategory(score: number): IKMCategory {
   )
 }
 
+// Returns per-unsur 1-4 scores for a single response (null if not answerable)
+export function getResponseUnsurScores(r: ResponseData): Array<number | null> {
+  return UNSUR_DEFS.map((u) => u.getScore(r))
+}
+
 export function computeIKM(responses: ResponseData[]): IKMResult | null {
-  const n = responses.length
+  // Only include responses that have at least one answerable unsur
+  const valid = responses.filter((r) =>
+    UNSUR_DEFS.some((u) => u.getScore(r) != null)
+  )
+  const n = valid.length
   if (n === 0) return null
 
-  const unsur: UnsurResult[] = SURVEY_QUESTIONS.map((q, i) => {
-    const key = Q_KEYS[i]
-    const sum = responses.reduce((acc, r) => acc + r[key], 0)
-    const nrr = sum / n
+  const unsur: UnsurResult[] = UNSUR_DEFS.map((def, i) => {
+    const label = IKM_UNSUR_LABELS[i].label
+    const scores = valid
+      .map((r) => def.getScore(r))
+      .filter((s): s is number => s != null)
+    const nrr = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
     const ikm = nrr * 25
     return {
-      key: q.key,
-      label: q.label,
+      key: def.key,
+      label,
       nrr: Math.round(nrr * 100) / 100,
       ikm: Math.round(ikm * 100) / 100,
       category: getIKMCategory(ikm),
@@ -72,21 +150,17 @@ export function computeIKM(responses: ResponseData[]): IKMResult | null {
   const ikmUnit =
     Math.round((unsur.reduce((acc, u) => acc + u.ikm, 0) / 9) * 100) / 100
 
-  return {
-    n,
-    unsur,
-    ikmUnit,
-    category: getIKMCategory(ikmUnit),
-  }
+  return { n, unsur, ikmUnit, category: getIKMCategory(ikmUnit) }
 }
 
 export function getAgeGroup(age: number): string {
-  if (age < 20) return "< 20"
-  if (age <= 30) return "20 - 30"
-  if (age <= 40) return "31 - 40"
-  if (age <= 50) return "41 - 50"
-  if (age <= 60) return "51 - 60"
-  return "> 60"
+  if (age < 17) return "< 17 tahun"
+  if (age <= 25) return "17-25 tahun"
+  if (age <= 34) return "26-34 tahun"
+  if (age <= 44) return "35-44 tahun"
+  if (age <= 54) return "45-54 tahun"
+  if (age <= 65) return "55-65 tahun"
+  return "> 65 tahun"
 }
 
 export function computeDemographics(responses: ResponseData[]): DemographicData {
@@ -94,6 +168,8 @@ export function computeDemographics(responses: ResponseData[]): DemographicData 
   const education: Record<string, number> = {}
   const ageGroup: Record<string, number> = {}
   const unitLayanan: Record<string, number> = {}
+  const pekerjaan: Record<string, number> = {}
+  const disabilitas: Record<string, number> = {}
 
   // Pre-initialize age groups in order
   AGE_GROUPS.forEach((g) => (ageGroup[g] = 0))
@@ -102,9 +178,22 @@ export function computeDemographics(responses: ResponseData[]): DemographicData 
     gender[r.gender] = (gender[r.gender] ?? 0) + 1
     education[r.education] = (education[r.education] ?? 0) + 1
     unitLayanan[r.unitLayanan] = (unitLayanan[r.unitLayanan] ?? 0) + 1
-    const group = getAgeGroup(r.age)
+
+    // Age group: use stored string for new responses, derive from integer for legacy
+    const group = r.ageGroup ?? getAgeGroup(r.age ?? 0)
     ageGroup[group] = (ageGroup[group] ?? 0) + 1
+
+    // Pekerjaan (new responses only)
+    if (r.pekerjaan) {
+      pekerjaan[r.pekerjaan] = (pekerjaan[r.pekerjaan] ?? 0) + 1
+    }
+
+    // Disabilitas (new responses only)
+    if (r.isDisabilitas != null) {
+      const key = r.isDisabilitas ? "Disabilitas" : "Non-Disabilitas"
+      disabilitas[key] = (disabilitas[key] ?? 0) + 1
+    }
   }
 
-  return { gender, education, ageGroup, unitLayanan }
+  return { gender, education, ageGroup, unitLayanan, pekerjaan, disabilitas }
 }

@@ -1,5 +1,5 @@
 // SKM BP3KP Jawa III - Prisma Schema
-// Permenpan-RB No. 14 Tahun 2017
+// Kuesioner Hybrid — Permenpan-RB No. 14 Tahun 2017
 
 generator client {
   provider = "prisma-client-js"
@@ -28,29 +28,68 @@ model BukuTamu {
 model Response {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())
+
   // Data Responden
   phone       String
   email       String
-  age         Int
-  gender      String   // "Laki-laki" | "Perempuan"
-  education   String   // "SD" | "SMP" | "SMA" | "D3" | "S1" | "S2" | "S3"
+  age         Int?     // nullable — kept for legacy data; new responses use ageGroup
+  ageGroup    String?  // new: age group string (< 17 tahun, 17-25 tahun, ...)
+  gender      String
+  education   String
   unitLayanan String
-  // 9 Unsur SKM (Permenpan-RB No. 14/2017) — nilai 1-4
-  q1          Int      // U1: Persyaratan
-  q2          Int      // U2: Prosedur
-  q3          Int      // U3: Waktu Penyelesaian
-  q4          Int      // U4: Biaya/Tarif
-  q5          Int      // U5: Produk Spesifikasi Layanan
-  q6          Int      // U6: Kompetensi Pelaksana
-  q7          Int      // U7: Perilaku Pelaksana
-  q8          Int      // U8: Penanganan Pengaduan
-  q9          Int      // U9: Sarana dan Prasarana
+  pekerjaan   String?  // new: occupation
+  isDisabilitas    Boolean? // new: disability flag
+  jenisDisabilitas String?  // new: type of disability if isDisabilitas=true
+
+  // Legacy 9 Unsur SKM (Permenpan-RB No. 14/2017) — nullable for new-format responses
+  q1  Int? // U1: Persyaratan
+  q2  Int? // U2: Prosedur
+  q3  Int? // U3: Waktu Penyelesaian
+  q4  Int? // U4: Biaya/Tarif
+  q5  Int? // U5: Produk Spesifikasi Layanan
+  q6  Int? // U6: Kompetensi Pelaksana
+  q7  Int? // U7: Perilaku Pelaksana
+  q8  Int? // U8: Penanganan Pengaduan
+  q9  Int? // U9: Sarana dan Prasarana
+
   // Pertanyaan terbuka
-  q10a        String?  // Hal yang kurang berkenan
-  q10b        String?  // Hal yang paling berkesan
+  q10a String? // Kritik dan Saran (new) / Hal kurang berkenan (legacy)
+  q10b String? // Hal paling berkesan (legacy only)
+
   // Pertanyaan khusus program bantuan perumahan (JSON)
   specificData String?
+
   // Link ke Buku Tamu (opsional)
-  bukuTamuId  Int?      @unique
-  bukuTamu    BukuTamu? @relation(fields: [bukuTamuId], references: [id])
+  bukuTamuId Int?      @unique
+  bukuTamu   BukuTamu? @relation(fields: [bukuTamuId], references: [id])
+
+  // New questions — Kuesioner Hybrid (19 sub-questions)
+  // U1 Persyaratan: nq1, nq2
+  nq1  Int? // P1: Informasi pelayanan tersedia (elektronik & nonelektronik)
+  nq2  Int? // P2: Kesesuaian persyaratan dengan informasi yang diberikan
+  // U2 Prosedur: nq3, nq4, nq5
+  nq3  Int? // P3: Standar dan prosedur layanan diinformasikan dengan jelas
+  nq4  Int? // P4: Prosedur/Alur layanan mudah dipahami dan dilakukan
+  nq5  Int? // P5: Layanan diberikan sesuai prosedur tanpa kecurangan
+  // U3 Waktu: nq6
+  nq6  Int? // P6: Jangka waktu layanan sesuai dengan yang diinformasikan
+  // U4 Biaya/Tarif: nq7, nq8, nq9
+  nq7  Int? // P7: Biaya layanan sesuai dengan yang diinformasikan
+  nq8  Int? // P8: Tidak ada pungutan liar (pungli) dalam pelayanan
+  nq9  Int? // P9: Tidak ada percaloan/perantara tidak resmi
+  // U5 Produk: nq10
+  nq10 Int? // P10: Produk layanan yang diterima sesuai dengan yang dipublikasikan
+  // U6 Kompetensi: nq11a, nq11b
+  nq11a Int? // P11a: Petugas merespon kebutuhan dengan cepat
+  nq11b Int? // P11b: Aplikasi sistem pelayanan merespon kebutuhan dengan cepat
+  // U7 Perilaku: nq12a, nq12b, nq13
+  nq12a Int? // P12a: Petugas melayani dengan ramah
+  nq12b Int? // P12b: Fitur pada aplikasi sistem layanan mudah digunakan
+  nq13  Int? // P13: Seluruh pengguna layanan dilayani secara adil tanpa diskriminasi
+  // U8 Pengaduan: nq14, nq15
+  nq14 Int? // P14: Pelayanan diberikan tanpa imbalan di luar aturan
+  nq15 Int? // P15: Layanan konsultasi dan pengaduan mudah diakses
+  // U9 Sarana: nq16a, nq16b
+  nq16a Int? // P16a: Sarana prasarana nyaman dan mudah digunakan
+  nq16b Int? // P16b: Sistem layanan online nyaman dan mudah digunakan
 }

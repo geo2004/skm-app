@@ -1,20 +1,26 @@
 import ExcelJS from "exceljs"
-import { SURVEY_QUESTIONS, OFFICE_NAME, SURVEY_YEAR } from "./constants"
-import { computeIKM } from "./ikm"
+import { OFFICE_NAME, SURVEY_YEAR, IKM_UNSUR_LABELS } from "./constants"
+import { computeIKM, getResponseUnsurScores } from "./ikm"
 
 type ResponseRow = {
   id: number
   createdAt: Date
-  phone: string
-  email: string
-  age: number
-  gender: string
-  education: string
-  unitLayanan: string
-  q1: number; q2: number; q3: number; q4: number; q5: number
-  q6: number; q7: number; q8: number; q9: number
-  q10a: string | null
-  q10b: string | null
+  phone: string; email: string
+  age: number | null; ageGroup: string | null
+  gender: string; education: string; unitLayanan: string
+  pekerjaan: string | null
+  isDisabilitas: boolean | null; jenisDisabilitas: string | null
+  q1: number | null; q2: number | null; q3: number | null
+  q4: number | null; q5: number | null; q6: number | null
+  q7: number | null; q8: number | null; q9: number | null
+  q10a: string | null; q10b: string | null
+  nq1: number | null; nq2: number | null; nq3: number | null
+  nq4: number | null; nq5: number | null; nq6: number | null
+  nq7: number | null; nq8: number | null; nq9: number | null; nq10: number | null
+  nq11a: number | null; nq11b: number | null
+  nq12a: number | null; nq12b: number | null; nq13: number | null
+  nq14: number | null; nq15: number | null
+  nq16a: number | null; nq16b: number | null
 }
 
 const NAVY = "FF1A3A6B"
@@ -22,6 +28,19 @@ const GOLD = "FFF5A623"
 const WHITE = "FFFFFFFF"
 const RED_LIGHT = "FFFFC7CE"
 const GREEN_LIGHT = "FFC6EFCE"
+const GRAY_LIGHT = "FFD3D3D3"
+
+const cellBorder: Partial<ExcelJS.Borders> = {
+  top: { style: "thin" }, left: { style: "thin" },
+  bottom: { style: "thin" }, right: { style: "thin" },
+}
+
+function headerStyle(cell: ExcelJS.Cell) {
+  cell.font = { bold: true, color: { argb: WHITE } }
+  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD } }
+  cell.alignment = { horizontal: "center", wrapText: true }
+  cell.border = cellBorder
+}
 
 export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<ExcelJS.Buffer> {
   const wb = new ExcelJS.Workbook()
@@ -31,53 +50,60 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   // ── Sheet 1: Data Responden ───────────────────────────────────────────────
   const ws1 = wb.addWorksheet("Data Responden")
 
-  // Title row
-  ws1.mergeCells("A1:U1")
-  const titleCell = ws1.getCell("A1")
-  titleCell.value = `DATA RESPONDEN SKM ${OFFICE_NAME} TAHUN ${SURVEY_YEAR}`
-  titleCell.font = { bold: true, size: 12, color: { argb: WHITE } }
-  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } }
-  titleCell.alignment = { horizontal: "center", vertical: "middle" }
+  ws1.mergeCells("A1:V1")
+  const t1 = ws1.getCell("A1")
+  t1.value = `DATA RESPONDEN SKM ${OFFICE_NAME} TAHUN ${SURVEY_YEAR}`
+  t1.font = { bold: true, size: 12, color: { argb: WHITE } }
+  t1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } }
+  t1.alignment = { horizontal: "center", vertical: "middle" }
   ws1.getRow(1).height = 30
 
-  // Header row
   const headers = [
-    "No", "Tanggal", "Nomor HP", "Email", "Usia", "Jenis Kelamin",
-    "Pendidikan", "Unit Layanan",
-    ...SURVEY_QUESTIONS.map((q) => `${q.key}: ${q.label}`),
-    "Catatan Negatif", "Catatan Positif",
+    "No", "Tanggal", "Nomor HP", "Email", "Usia/Kelompok", "Jenis Kelamin",
+    "Pendidikan", "Pekerjaan", "Disabilitas", "Unit Layanan",
+    ...IKM_UNSUR_LABELS.map((u) => `${u.key}: ${u.label}`),
+    "IKM", "Kritik & Saran",
   ]
 
   const headerRow = ws1.addRow(headers)
-  headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: WHITE } }
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD } }
-    cell.alignment = { horizontal: "center", wrapText: true }
-    cell.border = {
-      top: { style: "thin" }, left: { style: "thin" },
-      bottom: { style: "thin" }, right: { style: "thin" },
-    }
-  })
+  headerRow.eachCell(headerStyle)
   ws1.getRow(2).height = 36
 
-  // Data rows
   responses.forEach((r, idx) => {
+    const unsurScores = getResponseUnsurScores(r)
+    const validScores = unsurScores.filter((s): s is number => s != null)
+    const ikmAvg = validScores.length > 0
+      ? (validScores.reduce((a, b) => a + b, 0) / validScores.length) * 25
+      : null
+    const ageDisplay = r.ageGroup ?? (r.age != null ? String(r.age) : "")
+    const disabilitasDisplay = r.isDisabilitas == null
+      ? ""
+      : r.isDisabilitas
+        ? `Ya${r.jenisDisabilitas ? ` (${r.jenisDisabilitas})` : ""}`
+        : "Tidak"
+
     const row = ws1.addRow([
       idx + 1,
       r.createdAt.toLocaleDateString("id-ID"),
-      r.phone, r.email, r.age, r.gender, r.education, r.unitLayanan,
-      r.q1, r.q2, r.q3, r.q4, r.q5, r.q6, r.q7, r.q8, r.q9,
-      r.q10a ?? "", r.q10b ?? "",
+      r.phone, r.email, ageDisplay, r.gender, r.education,
+      r.pekerjaan ?? "", disabilitasDisplay, r.unitLayanan,
+      ...unsurScores.map((s) => s != null ? Math.round(s * 100) / 100 : ""),
+      ikmAvg != null ? Math.round(ikmAvg * 100) / 100 : "",
+      r.q10a ?? "",
     ])
 
-    // Conditional formatting for Likert scores (cols I–Q = 9–17)
-    for (let col = 9; col <= 17; col++) {
+    // Color-code unsur score columns (cols K–S = 11–19)
+    for (let col = 11; col <= 19; col++) {
       const cell = row.getCell(col)
-      const val = cell.value as number
+      const val = cell.value as number | string
       cell.alignment = { horizontal: "center" }
-      cell.fill = {
-        type: "pattern", pattern: "solid",
-        fgColor: { argb: val <= 2 ? RED_LIGHT : GREEN_LIGHT },
+      if (typeof val === "number") {
+        cell.fill = {
+          type: "pattern", pattern: "solid",
+          fgColor: { argb: val <= 2 ? RED_LIGHT : GREEN_LIGHT },
+        }
+      } else {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRAY_LIGHT } }
       }
     }
   })
@@ -87,15 +113,18 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   ws1.getColumn(2).width = 14
   ws1.getColumn(3).width = 16
   ws1.getColumn(4).width = 24
-  ws1.getColumn(5).width = 7
-  ws1.getColumn(6).width = 14
-  ws1.getColumn(7).width = 20
-  ws1.getColumn(8).width = 30
-  for (let i = 9; i <= 17; i++) ws1.getColumn(i).width = 12
-  ws1.getColumn(18).width = 35
-  ws1.getColumn(19).width = 35
+  ws1.getColumn(5).width = 14
+  ws1.getColumn(6).width = 12
+  ws1.getColumn(7).width = 16
+  ws1.getColumn(8).width = 18
+  ws1.getColumn(9).width = 14
+  ws1.getColumn(10).width = 32
+  for (let i = 11; i <= 19; i++) ws1.getColumn(i).width = 10
+  ws1.getColumn(20).width = 8
+  ws1.getColumn(21).width = 35
+  ws1.getColumn(22).width = 35
 
-  ws1.autoFilter = { from: "A2", to: `S2` }
+  ws1.autoFilter = { from: "A2", to: "T2" }
   ws1.views = [{ state: "frozen", ySplit: 2 }]
 
   // ── Sheet 2: Rekapitulasi IKM ─────────────────────────────────────────────
@@ -109,14 +138,8 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   t2.alignment = { horizontal: "center", vertical: "middle" }
   ws2.getRow(1).height = 30
 
-  // Sub-header
   ws2.addRow(["No", "Unsur Pelayanan", "Jumlah Nilai", "NRR per Unsur", "IKM per Unsur", "Kategori", "Keterangan"])
-  ws2.getRow(2).eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: WHITE } }
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD } }
-    cell.alignment = { horizontal: "center", wrapText: true }
-    cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
-  })
+  ws2.getRow(2).eachCell(headerStyle)
 
   const ikm = computeIKM(responses)
 
@@ -129,12 +152,9 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
       ])
       row.getCell(4).numFmt = "0.00"
       row.getCell(5).numFmt = "0.00"
-      row.eachCell((cell) => {
-        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
-      })
+      row.eachCell((cell) => { cell.border = cellBorder })
     })
 
-    // IKM Unit total row
     ws2.addRow([])
     const totalRow = ws2.addRow(["", "IKM UNIT LAYANAN", "", "", ikm.ikmUnit, ikm.category.label, ikm.category.name])
     totalRow.font = { bold: true }
@@ -144,7 +164,7 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
     })
 
     ws2.addRow([])
-    ws2.addRow(["Jumlah Responden:", responses.length])
+    ws2.addRow(["Jumlah Responden:", ikm.n])
     ws2.addRow(["Tanggal Cetak:", new Date().toLocaleDateString("id-ID")])
   }
 
@@ -155,6 +175,78 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   ws2.getColumn(5).width = 14
   ws2.getColumn(6).width = 10
   ws2.getColumn(7).width = 16
+
+  // ── Sheet 3: Demografi ────────────────────────────────────────────────────
+  const ws3 = wb.addWorksheet("Demografi")
+
+  ws3.mergeCells("A1:C1")
+  const t3 = ws3.getCell("A1")
+  t3.value = `PROFIL DEMOGRAFI RESPONDEN — ${OFFICE_NAME} TAHUN ${SURVEY_YEAR}`
+  t3.font = { bold: true, size: 11, color: { argb: WHITE } }
+  t3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } }
+  t3.alignment = { horizontal: "center", vertical: "middle" }
+  ws3.getRow(1).height = 28
+
+  let row = 3
+
+  function addDemoSection(title: string, counts: Record<string, number>) {
+    const entries = Object.entries(counts).filter(([, v]) => v > 0)
+    if (entries.length === 0) return
+    const total = entries.reduce((a, [, v]) => a + v, 0)
+    ws3.getCell(`A${row}`).value = title
+    ws3.getCell(`A${row}`).font = { bold: true }
+    ws3.getCell(`B${row}`).value = "Jumlah"
+    ws3.getCell(`C${row}`).value = "Persentase"
+    ws3.getRow(row).eachCell((cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD } }
+      cell.font = { bold: true, color: { argb: WHITE } }
+      cell.border = cellBorder
+    })
+    row++
+    for (const [name, count] of entries) {
+      ws3.getCell(`A${row}`).value = name
+      ws3.getCell(`B${row}`).value = count
+      ws3.getCell(`C${row}`).value = `${((count / total) * 100).toFixed(1)}%`
+      ws3.getRow(row).eachCell((cell) => { cell.border = cellBorder })
+      row++
+    }
+    row++
+  }
+
+  // Need demographics computed here
+  const { gender, education, ageGroup, unitLayanan, pekerjaan, disabilitas } =
+    (() => {
+      const g: Record<string, number> = {}
+      const ed: Record<string, number> = {}
+      const ag: Record<string, number> = {}
+      const ul: Record<string, number> = {}
+      const pk: Record<string, number> = {}
+      const dis: Record<string, number> = {}
+      for (const r of responses) {
+        g[r.gender] = (g[r.gender] ?? 0) + 1
+        ed[r.education] = (ed[r.education] ?? 0) + 1
+        const grp = r.ageGroup ?? String(r.age ?? "")
+        ag[grp] = (ag[grp] ?? 0) + 1
+        ul[r.unitLayanan] = (ul[r.unitLayanan] ?? 0) + 1
+        if (r.pekerjaan) pk[r.pekerjaan] = (pk[r.pekerjaan] ?? 0) + 1
+        if (r.isDisabilitas != null) {
+          const key = r.isDisabilitas ? "Disabilitas" : "Non-Disabilitas"
+          dis[key] = (dis[key] ?? 0) + 1
+        }
+      }
+      return { gender: g, education: ed, ageGroup: ag, unitLayanan: ul, pekerjaan: pk, disabilitas: dis }
+    })()
+
+  addDemoSection("Jenis Kelamin", gender)
+  addDemoSection("Kelompok Usia", ageGroup)
+  addDemoSection("Pendidikan", education)
+  addDemoSection("Pekerjaan", pekerjaan)
+  addDemoSection("Status Disabilitas", disabilitas)
+  addDemoSection("Unit Layanan", unitLayanan)
+
+  ws3.getColumn(1).width = 32
+  ws3.getColumn(2).width = 12
+  ws3.getColumn(3).width = 14
 
   return await wb.xlsx.writeBuffer()
 }

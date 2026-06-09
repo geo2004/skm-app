@@ -1,5 +1,5 @@
 // Konstanta untuk SKM BP3KP Jawa III
-// Berdasarkan Permenpan-RB No. 14 Tahun 2017
+// Kuesioner Hybrid — Permenpan-RB No. 14 Tahun 2017
 
 export const OFFICE_NAME = "BP3KP Jawa III"
 export const OFFICE_FULL_NAME =
@@ -26,24 +26,58 @@ export const HOUSING_PROGRAM_KEYS = [
 ] as const
 
 export const EDUCATION_OPTIONS = [
-  "SD atau sederajat",
-  "SMP atau sederajat",
-  "SMA atau sederajat",
-  "Diploma (D3)",
-  "Sarjana (S1)",
-  "Magister (S2)",
-  "Doktor (S3)",
+  "Tidak sekolah",
+  "SD/Sederajat",
+  "SMP/Sederajat",
+  "SMA/Sederajat",
+  "D1/D2/D3",
+  "D4/S1",
+  "S2",
+  "S3",
 ]
+
+// Map old education values → new (for BukuTamu pre-fill compatibility)
+export const EDUCATION_LEGACY_MAP: Record<string, string> = {
+  "SD atau sederajat": "SD/Sederajat",
+  "SMP atau sederajat": "SMP/Sederajat",
+  "SMA atau sederajat": "SMA/Sederajat",
+  "Diploma (D3)": "D1/D2/D3",
+  "Sarjana (S1)": "D4/S1",
+  "Magister (S2)": "S2",
+  "Doktor (S3)": "S3",
+}
 
 export const GENDER_OPTIONS = ["Laki-laki", "Perempuan"]
 
 export const AGE_GROUPS = [
-  "< 20",
-  "20 - 30",
-  "31 - 40",
-  "41 - 50",
-  "51 - 60",
-  "> 60",
+  "< 17 tahun",
+  "17-25 tahun",
+  "26-34 tahun",
+  "35-44 tahun",
+  "45-54 tahun",
+  "55-65 tahun",
+  "> 65 tahun",
+]
+
+export const PEKERJAAN_OPTIONS = [
+  "ASN",
+  "TNI",
+  "POLRI",
+  "Swasta",
+  "Wirausaha",
+  "Ibu Rumah Tangga",
+  "Pelajar/Mahasiswa",
+  "Petani/Nelayan",
+  "Pekerja Lepas/Freelance",
+  "Pensiunan",
+  "Lainnya",
+]
+
+export const DISABILITAS_OPTIONS = [
+  "Disabilitas Fisik",
+  "Disabilitas Intelektual",
+  "Disabilitas Mental",
+  "Disabilitas Sensorik",
 ]
 
 export interface SurveyOption {
@@ -59,115 +93,211 @@ export interface SurveyQuestion {
   options: SurveyOption[]
 }
 
+// 19 sub-questions — Kuesioner Hybrid
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
-    id: "q1",
-    key: "U1",
-    label: "Persyaratan",
-    text: "Bagaimana pendapat Saudara tentang kesesuaian persyaratan pelayanan dengan jenis pelayanannya?",
+    id: "nq1", key: "P1", label: "Informasi Pelayanan",
+    text: "Informasi pelayanan tersedia melalui media elektronik maupun nonelektronik",
     options: [
-      { value: 1, label: "Tidak sesuai" },
-      { value: 2, label: "Kurang sesuai" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq2", key: "P2", label: "Kesesuaian Persyaratan",
+    text: "Kesesuaian persyaratan dengan informasi yang diberikan",
+    options: [
+      { value: 1, label: "Sangat tidak sesuai" },
+      { value: 2, label: "Tidak sesuai" },
       { value: 3, label: "Sesuai" },
       { value: 4, label: "Sangat sesuai" },
     ],
   },
   {
-    id: "q2",
-    key: "U2",
-    label: "Prosedur",
-    text: "Bagaimana pemahaman Saudara tentang kemudahan prosedur pelayanan di unit ini?",
+    id: "nq3", key: "P3", label: "Standar Prosedur",
+    text: "Standar dan prosedur layanan diinformasikan dengan jelas",
     options: [
-      { value: 1, label: "Tidak mudah" },
-      { value: 2, label: "Kurang mudah" },
-      { value: 3, label: "Mudah" },
-      { value: 4, label: "Sangat mudah" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q3",
-    key: "U3",
-    label: "Waktu Penyelesaian",
-    text: "Bagaimana pendapat Saudara tentang kecepatan waktu dalam memberikan pelayanan?",
+    id: "nq4", key: "P4", label: "Kemudahan Prosedur",
+    text: "Prosedur/Alur layanan mudah dipahami dan dilakukan",
     options: [
-      { value: 1, label: "Tidak cepat" },
-      { value: 2, label: "Kurang cepat" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq5", key: "P5", label: "Integritas Prosedur",
+    text: "Layanan diberikan sesuai prosedur tanpa kecurangan",
+    options: [
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq6", key: "P6", label: "Waktu Layanan",
+    text: "Jangka waktu layanan sesuai dengan yang diinformasikan",
+    options: [
+      { value: 1, label: "Sangat tidak sesuai" },
+      { value: 2, label: "Tidak sesuai" },
+      { value: 3, label: "Sesuai" },
+      { value: 4, label: "Sangat sesuai" },
+    ],
+  },
+  {
+    id: "nq7", key: "P7", label: "Kesesuaian Biaya",
+    text: "Biaya layanan sesuai dengan yang diinformasikan",
+    options: [
+      { value: 1, label: "Sangat tidak sesuai" },
+      { value: 2, label: "Tidak sesuai" },
+      { value: 3, label: "Sesuai" },
+      { value: 4, label: "Sangat sesuai" },
+    ],
+  },
+  {
+    id: "nq8", key: "P8", label: "Bebas Pungli",
+    text: "Tidak ada pungutan liar (pungli) dalam pelayanan",
+    options: [
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq9", key: "P9", label: "Bebas Percaloan",
+    text: "Tidak ada percaloan/perantara tidak resmi dalam pelayanan",
+    options: [
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq10", key: "P10", label: "Kesesuaian Produk",
+    text: "Produk layanan yang diterima sesuai dengan yang dipublikasikan",
+    options: [
+      { value: 1, label: "Sangat tidak sesuai" },
+      { value: 2, label: "Tidak sesuai" },
+      { value: 3, label: "Sesuai" },
+      { value: 4, label: "Sangat sesuai" },
+    ],
+  },
+  {
+    id: "nq11a", key: "P11a", label: "Respons Petugas",
+    text: "Petugas merespon kebutuhan dengan cepat",
+    options: [
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+  {
+    id: "nq11b", key: "P11b", label: "Respons Aplikasi",
+    text: "Aplikasi sistem pelayanan merespon kebutuhan dengan cepat (membuka halaman, konten, pencarian informasi, unduh/unggah)",
+    options: [
+      { value: 1, label: "Sangat tidak cepat" },
+      { value: 2, label: "Tidak cepat" },
       { value: 3, label: "Cepat" },
       { value: 4, label: "Sangat cepat" },
     ],
   },
   {
-    id: "q4",
-    key: "U4",
-    label: "Biaya / Tarif",
-    text: "Bagaimana pendapat Saudara tentang kewajaran biaya/tarif dalam pelayanan?",
+    id: "nq12a", key: "P12a", label: "Keramahan Petugas",
+    text: "Petugas melayani saya dengan ramah",
     options: [
-      { value: 1, label: "Sangat mahal" },
-      { value: 2, label: "Cukup mahal" },
-      { value: 3, label: "Murah" },
-      { value: 4, label: "Gratis / Sangat murah" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q5",
-    key: "U5",
-    label: "Produk Spesifikasi Layanan",
-    text: "Bagaimana pendapat Saudara tentang kesesuaian produk pelayanan antara yang tercantum dalam standar pelayanan dengan hasil yang diberikan?",
+    id: "nq12b", key: "P12b", label: "Kemudahan Fitur",
+    text: "Fitur pada aplikasi sistem layanan mudah digunakan",
     options: [
-      { value: 1, label: "Tidak sesuai" },
-      { value: 2, label: "Kurang sesuai" },
-      { value: 3, label: "Sesuai" },
-      { value: 4, label: "Sangat sesuai" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q6",
-    key: "U6",
-    label: "Kompetensi Pelaksana",
-    text: "Bagaimana pendapat Saudara tentang kompetensi/kemampuan petugas dalam pelayanan?",
+    id: "nq13", key: "P13", label: "Keadilan Layanan",
+    text: "Seluruh pengguna layanan dilayani secara adil tanpa diskriminasi",
     options: [
-      { value: 1, label: "Tidak kompeten" },
-      { value: 2, label: "Kurang kompeten" },
-      { value: 3, label: "Kompeten" },
-      { value: 4, label: "Sangat kompeten" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q7",
-    key: "U7",
-    label: "Perilaku Pelaksana",
-    text: "Bagaimana pendapat Saudara tentang perilaku petugas dalam pelayanan terkait kesopanan dan keramahan?",
+    id: "nq14", key: "P14", label: "Bebas Imbalan",
+    text: "Pelayanan diberikan tanpa imbalan uang, barang, atau fasilitas di luar aturan",
     options: [
-      { value: 1, label: "Tidak sopan" },
-      { value: 2, label: "Kurang sopan" },
-      { value: 3, label: "Sopan" },
-      { value: 4, label: "Sangat sopan" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q8",
-    key: "U8",
-    label: "Penanganan Pengaduan",
-    text: "Bagaimana pendapat Saudara tentang penanganan pengaduan pengguna layanan?",
+    id: "nq15", key: "P15", label: "Akses Pengaduan",
+    text: "Layanan konsultasi dan pengaduan mudah diakses",
     options: [
-      { value: 1, label: "Tidak ada" },
-      { value: 2, label: "Ada tetapi tidak berfungsi" },
-      { value: 3, label: "Berfungsi kurang maksimal" },
-      { value: 4, label: "Dikelola dengan baik" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
   {
-    id: "q9",
-    key: "U9",
-    label: "Sarana dan Prasarana",
-    text: "Bagaimana pendapat Saudara tentang kualitas sarana dan prasarana?",
+    id: "nq16a", key: "P16a", label: "Sarana Prasarana",
+    text: "Sarana prasarana nyaman dan mudah digunakan",
     options: [
-      { value: 1, label: "Buruk" },
-      { value: 2, label: "Kurang baik" },
-      { value: 3, label: "Baik" },
-      { value: 4, label: "Sangat baik" },
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
     ],
   },
+  {
+    id: "nq16b", key: "P16b", label: "Sistem Online",
+    text: "Sistem layanan online nyaman dan mudah digunakan",
+    options: [
+      { value: 1, label: "Sangat tidak setuju" },
+      { value: 2, label: "Tidak setuju" },
+      { value: 3, label: "Setuju" },
+      { value: 4, label: "Sangat setuju" },
+    ],
+  },
+]
+
+// 9 Unsur IKM — used in reports and dashboard
+export const IKM_UNSUR_LABELS = [
+  { key: "U1", label: "Persyaratan" },
+  { key: "U2", label: "Prosedur" },
+  { key: "U3", label: "Waktu Penyelesaian" },
+  { key: "U4", label: "Biaya/Tarif" },
+  { key: "U5", label: "Produk Layanan" },
+  { key: "U6", label: "Kompetensi Pelaksana" },
+  { key: "U7", label: "Perilaku Pelaksana" },
+  { key: "U8", label: "Penanganan Pengaduan" },
+  { key: "U9", label: "Sarana dan Prasarana" },
 ]
 
 export interface IKMCategory {
@@ -180,7 +310,46 @@ export interface IKMCategory {
   textClass: string
 }
 
-// Pertanyaan khusus per program bantuan perumahan (Seksi B kuesioner)
+export const IKM_CATEGORIES: IKMCategory[] = [
+  {
+    label: "A",
+    name: "Sangat Baik",
+    min: 88.31,
+    max: 100,
+    color: "#16a34a",
+    bgClass: "bg-green-600",
+    textClass: "text-green-700",
+  },
+  {
+    label: "B",
+    name: "Baik",
+    min: 76.61,
+    max: 88.3,
+    color: "#2563eb",
+    bgClass: "bg-blue-600",
+    textClass: "text-blue-700",
+  },
+  {
+    label: "C",
+    name: "Kurang Baik",
+    min: 65.0,
+    max: 76.6,
+    color: "#d97706",
+    bgClass: "bg-amber-500",
+    textClass: "text-amber-700",
+  },
+  {
+    label: "D",
+    name: "Tidak Baik",
+    min: 25.0,
+    max: 64.99,
+    color: "#dc2626",
+    bgClass: "bg-red-600",
+    textClass: "text-red-700",
+  },
+]
+
+// Pertanyaan khusus per program bantuan perumahan (Seksi B kuesioner) — unchanged
 export const PROGRAM_SPECIFIC_QUESTIONS: Record<string, SurveyQuestion[]> = {
   "Bantuan Stimulan Perumahan Swadaya (BSPS)": [
     {
@@ -341,42 +510,3 @@ export const PROGRAM_SPECIFIC_QUESTIONS: Record<string, SurveyQuestion[]> = {
     },
   ],
 }
-
-export const IKM_CATEGORIES: IKMCategory[] = [
-  {
-    label: "A",
-    name: "Sangat Baik",
-    min: 88.31,
-    max: 100,
-    color: "#16a34a",
-    bgClass: "bg-green-600",
-    textClass: "text-green-700",
-  },
-  {
-    label: "B",
-    name: "Baik",
-    min: 76.61,
-    max: 88.3,
-    color: "#2563eb",
-    bgClass: "bg-blue-600",
-    textClass: "text-blue-700",
-  },
-  {
-    label: "C",
-    name: "Kurang Baik",
-    min: 65.0,
-    max: 76.6,
-    color: "#d97706",
-    bgClass: "bg-amber-500",
-    textClass: "text-amber-700",
-  },
-  {
-    label: "D",
-    name: "Tidak Baik",
-    min: 25.0,
-    max: 64.99,
-    color: "#dc2626",
-    bgClass: "bg-red-600",
-    textClass: "text-red-700",
-  },
-]

@@ -7,34 +7,54 @@ import {
   SURVEY_QUESTIONS,
   UNIT_LAYANAN_OPTIONS,
   EDUCATION_OPTIONS,
+  EDUCATION_LEGACY_MAP,
   GENDER_OPTIONS,
+  AGE_GROUPS,
+  PEKERJAAN_OPTIONS,
+  DISABILITAS_OPTIONS,
   HOUSING_PROGRAM_KEYS,
   PROGRAM_SPECIFIC_QUESTIONS,
   OFFICE_NAME,
   SURVEY_YEAR,
 } from "@/lib/constants"
+import { getAgeGroup } from "@/lib/ikm"
 
 const LOGO_URL = "/logo_pkp.png"
 
 type FormData = {
   unitLayanan: string
-  phone: string; email: string; age: string; gender: string; education: string; consent: boolean
-  q1: number; q2: number; q3: number; q4: number; q5: number
-  q6: number; q7: number; q8: number; q9: number
+  phone: string; email: string; ageGroup: string; gender: string
+  education: string; pekerjaan: string; pekerjaanLainnya: string
+  isDisabilitas: "" | "Ya" | "Tidak"; jenisDisabilitas: string
+  consent: boolean
+  nq1: number; nq2: number; nq3: number; nq4: number; nq5: number
+  nq6: number; nq7: number; nq8: number; nq9: number; nq10: number
+  nq11a: number; nq11b: number; nq12a: number; nq12b: number
+  nq13: number; nq14: number; nq15: number; nq16a: number; nq16b: number
   specificData: Record<string, number>
-  q10a: string; q10b: string
+  kritikSaran: string
 }
 
 const EMPTY: FormData = {
-  unitLayanan: "", phone: "", email: "", age: "", gender: "", education: "", consent: false,
-  q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0, q8: 0, q9: 0,
+  unitLayanan: "", phone: "", email: "", ageGroup: "", gender: "",
+  education: "", pekerjaan: "", pekerjaanLainnya: "",
+  isDisabilitas: "", jenisDisabilitas: "", consent: false,
+  nq1: 0, nq2: 0, nq3: 0, nq4: 0, nq5: 0,
+  nq6: 0, nq7: 0, nq8: 0, nq9: 0, nq10: 0,
+  nq11a: 0, nq11b: 0, nq12a: 0, nq12b: 0,
+  nq13: 0, nq14: 0, nq15: 0, nq16a: 0, nq16b: 0,
   specificData: {},
-  q10a: "", q10b: "",
+  kritikSaran: "",
 }
 
-// Step 0 = Verifikasi (new), steps 1–N are the original steps shifted by 1
-const BASE_STEPS    = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Catatan & Kirim"]
-const HOUSING_STEPS = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Info Bantuan", "Catatan & Kirim"]
+const BASE_STEPS    = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Kirim"]
+const HOUSING_STEPS = ["Verifikasi", "Unit Layanan", "Data Diri", "Penilaian", "Info Bantuan", "Kirim"]
+
+// All new question ids for validation
+const NEW_Q_IDS = [
+  "nq1","nq2","nq3","nq4","nq5","nq6","nq7","nq8","nq9","nq10",
+  "nq11a","nq11b","nq12a","nq12b","nq13","nq14","nq15","nq16a","nq16b",
+] as const
 
 export default function SurveyPage() {
   const router = useRouter()
@@ -49,17 +69,21 @@ export default function SurveyPage() {
   const [lookupResult, setLookupResult] = useState<"idle" | "found" | "notfound">("idle")
   const [bukuTamuId, setBukuTamuId] = useState<number | null>(null)
   const [prefillName, setPrefillName] = useState("")
+  // when prefilled, show data tambahan before jumping to penilaian
+  const [showDataTambahan, setShowDataTambahan] = useState(false)
 
   const isHousingProgram = (HOUSING_PROGRAM_KEYS as readonly string[]).includes(form.unitLayanan)
   const activeSteps = isHousingProgram ? HOUSING_STEPS : BASE_STEPS
   const totalSteps = activeSteps.length
   const finalStep = totalSteps - 1
 
-  // With the new Verifikasi step at index 0, Penilaian is now index 3
   const isSpecificStep = step === 4 && isHousingProgram
   const isFinalStep = step === finalStep
 
   const programQuestions = PROGRAM_SPECIFIC_QUESTIONS[form.unitLayanan] ?? []
+
+  const effectivePekerjaan =
+    form.pekerjaan === "Lainnya" ? form.pekerjaanLainnya.trim() : form.pekerjaan
 
   function set<K extends keyof FormData>(key: K, val: FormData[K]) {
     setForm((f) => ({ ...f, [key]: val }))
@@ -77,19 +101,22 @@ export default function SurveyPage() {
       if (data.found) {
         setBukuTamuId(data.id)
         setPrefillName(data.nama)
+        // Convert legacy education values to new format
+        const edu = EDUCATION_LEGACY_MAP[data.education] ?? data.education
+        // Derive age group from integer age
+        const ageGrp = data.age ? getAgeGroup(data.age) : ""
         setForm((f) => ({
           ...f,
           phone: data.phone ?? lookupPhone.trim(),
           email: data.email ?? "",
-          age: String(data.age ?? ""),
+          ageGroup: ageGrp,
           gender: data.gender ?? "",
-          education: data.education ?? "",
+          education: edu,
           unitLayanan: data.unitLayanan ?? "",
           consent: true,
         }))
         setLookupResult("found")
-        // Jump directly to Penilaian (step 3)
-        setTimeout(() => { setStep(3); window.scrollTo(0, 0) }, 800)
+        setShowDataTambahan(true)
       } else {
         setLookupResult("notfound")
       }
@@ -100,28 +127,46 @@ export default function SurveyPage() {
     }
   }
 
+  function handleDataTambahanNext() {
+    if (!form.pekerjaan) { setError("Pilih pekerjaan."); return }
+    if (form.pekerjaan === "Lainnya" && !form.pekerjaanLainnya.trim()) {
+      setError("Isi pekerjaan Lainnya."); return
+    }
+    if (!form.isDisabilitas) { setError("Pilih status disabilitas."); return }
+    setError("")
+    setStep(3)
+    window.scrollTo(0, 0)
+  }
+
   function skipToManual() {
     setLookupResult("idle")
+    setShowDataTambahan(false)
     setError("")
     setStep(1)
     window.scrollTo(0, 0)
   }
 
   function validateStep(): string {
-    if (step === 0) return "" // Verifikasi — no required fields
+    if (step === 0) return "" // handled separately for found/not-found sub-states
     if (step === 1 && !form.unitLayanan) return "Pilih unit layanan terlebih dahulu."
     if (step === 2) {
       if (!form.phone || form.phone.trim().length < 8) return "Nomor HP tidak valid."
       if (!form.email || !form.email.includes("@")) return "Email tidak valid."
-      const age = Number(form.age)
-      if (!Number.isInteger(age) || age < 15 || age > 100) return "Usia harus antara 15–100 tahun."
+      if (!form.ageGroup) return "Pilih kelompok usia."
       if (!form.gender) return "Pilih jenis kelamin."
       if (!form.education) return "Pilih pendidikan terakhir."
+      if (!form.pekerjaan) return "Pilih pekerjaan."
+      if (form.pekerjaan === "Lainnya" && !form.pekerjaanLainnya.trim())
+        return "Isi pekerjaan Lainnya."
+      if (!form.isDisabilitas) return "Pilih status disabilitas."
       if (!form.consent) return "Anda harus menyetujui pernyataan persetujuan data."
     }
     if (step === 3) {
-      for (const q of SURVEY_QUESTIONS) {
-        if (!(form[q.id as keyof FormData] as number)) return `Harap jawab pertanyaan: ${q.label}`
+      for (const id of NEW_Q_IDS) {
+        if (!form[id]) {
+          const q = SURVEY_QUESTIONS.find((q) => q.id === id)
+          return `Harap jawab pertanyaan: ${q?.label ?? id}`
+        }
       }
     }
     if (isSpecificStep) {
@@ -146,13 +191,25 @@ export default function SurveyPage() {
     setError(""); setSubmitting(true)
     try {
       const payload = {
-        ...form,
-        age: Number(form.age),
-        q10a: form.q10a || null,
-        q10b: form.q10b || null,
+        phone: form.phone,
+        email: form.email,
+        ageGroup: form.ageGroup,
+        gender: form.gender,
+        education: form.education,
+        unitLayanan: form.unitLayanan,
+        pekerjaan: effectivePekerjaan,
+        isDisabilitas: form.isDisabilitas === "Ya",
+        jenisDisabilitas: form.isDisabilitas === "Ya" && form.jenisDisabilitas
+          ? form.jenisDisabilitas : null,
+        nq1: form.nq1, nq2: form.nq2, nq3: form.nq3, nq4: form.nq4, nq5: form.nq5,
+        nq6: form.nq6, nq7: form.nq7, nq8: form.nq8, nq9: form.nq9, nq10: form.nq10,
+        nq11a: form.nq11a, nq11b: form.nq11b,
+        nq12a: form.nq12a, nq12b: form.nq12b,
+        nq13: form.nq13, nq14: form.nq14, nq15: form.nq15,
+        nq16a: form.nq16a, nq16b: form.nq16b,
+        q10a: form.kritikSaran || null,
         specificData: isHousingProgram && Object.keys(form.specificData).length > 0
-          ? form.specificData
-          : null,
+          ? form.specificData : null,
         bukuTamuId,
       }
       const res = await fetch("/api/responses", {
@@ -168,6 +225,13 @@ export default function SurveyPage() {
       setSubmitting(false)
     }
   }
+
+  // Compute preview IKM score for summary step
+  const previewIKM = (() => {
+    const scores = NEW_Q_IDS.map((id) => form[id]).filter(Boolean) as number[]
+    if (scores.length === 0) return null
+    return ((scores.reduce((a, b) => a + b, 0) / scores.length) * 25).toFixed(1)
+  })()
 
   return (
     <main className="min-h-screen" style={{ background: "#f5f7f8" }}>
@@ -188,13 +252,11 @@ export default function SurveyPage() {
         <div className="max-w-xl mx-auto flex items-center gap-1">
           {activeSteps.map((label, i) => (
             <div key={i} className="flex-1 flex flex-col items-center">
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-0.5 transition-all ${
-                  i < step ? "bg-[#D5C58A] text-[#113F51]"
-                  : i === step ? "bg-white text-[#0E5B73]"
-                  : "bg-white/20 text-white/50"
-                }`}
-              >
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-0.5 transition-all ${
+                i < step ? "bg-[#D5C58A] text-[#113F51]"
+                : i === step ? "bg-white text-[#0E5B73]"
+                : "bg-white/20 text-white/50"
+              }`}>
                 {i < step ? "✓" : i + 1}
               </div>
               <span className={`text-xs hidden sm:block ${i === step ? "text-white font-semibold" : "text-white/40"}`}>
@@ -213,7 +275,7 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 0: Verifikasi — phone lookup */}
+        {/* ── Step 0: Verifikasi ── */}
         {step === 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
             <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
@@ -223,42 +285,28 @@ export default function SurveyPage() {
               <p className="text-white/60 text-xs mt-0.5">Masukkan nomor HP yang Anda daftarkan di Buku Tamu</p>
             </div>
             <div className="p-6 space-y-4">
-              {lookupResult === "found" ? (
-                <div className="rounded-lg p-4 text-sm" style={{ background: "#d1fae5", borderLeft: "3px solid #16a34a" }}>
-                  <p className="font-semibold text-green-800">Data ditemukan!</p>
-                  <p className="text-green-700 mt-0.5">Halo, <strong>{prefillName}</strong>. Data Anda telah terisi otomatis.</p>
-                  <p className="text-green-600 text-xs mt-1">Mengalihkan ke halaman penilaian...</p>
-                </div>
-              ) : (
+              {!showDataTambahan ? (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
                     <input
-                      type="tel"
-                      placeholder="08xxxxxxxxxx"
+                      type="tel" placeholder="08xxxxxxxxxx"
                       className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
                       value={lookupPhone}
                       onChange={(e) => { setLookupPhone(e.target.value); setLookupResult("idle") }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLookup() } }}
                     />
                   </div>
-
                   {lookupResult === "notfound" && (
                     <div className="rounded-lg p-3 text-sm" style={{ background: "#fff3cd", borderLeft: "3px solid #CDB278", color: "#856404" }}>
                       Data tidak ditemukan untuk nomor ini hari ini. Silakan isi formulir secara manual.
                     </div>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={handleLookup}
-                    disabled={looking}
+                  <button type="button" onClick={handleLookup} disabled={looking}
                     className="w-full py-2.5 rounded-lg font-semibold text-white text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-                    style={{ background: "#0E5B73" }}
-                  >
+                    style={{ background: "#0E5B73" }}>
                     {looking ? "Mencari..." : "Cari Data →"}
                   </button>
-
                   <div className="text-center">
                     <button type="button" onClick={skipToManual}
                       className="text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2">
@@ -266,12 +314,70 @@ export default function SurveyPage() {
                     </button>
                   </div>
                 </>
+              ) : (
+                /* Data Tambahan setelah prefill ditemukan */
+                <div className="space-y-4">
+                  <div className="rounded-lg p-4 text-sm" style={{ background: "#d1fae5", borderLeft: "3px solid #16a34a" }}>
+                    <p className="font-semibold text-green-800">Data ditemukan!</p>
+                    <p className="text-green-700 mt-0.5">Halo, <strong>{prefillName}</strong>. Data Anda telah terisi otomatis.</p>
+                    <p className="text-green-600 text-xs mt-1">Lengkapi data berikut untuk melanjutkan ke penilaian.</p>
+                  </div>
+
+                  {/* Pekerjaan */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan *</label>
+                    <select className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none bg-white"
+                      value={form.pekerjaan} onChange={(e) => set("pekerjaan", e.target.value)}>
+                      <option value="">Pilih pekerjaan</option>
+                      {PEKERJAAN_OPTIONS.map((p) => <option key={p}>{p}</option>)}
+                    </select>
+                    {form.pekerjaan === "Lainnya" && (
+                      <input type="text" placeholder="Sebutkan pekerjaan Anda"
+                        className="mt-2 w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none"
+                        value={form.pekerjaanLainnya} onChange={(e) => set("pekerjaanLainnya", e.target.value)} />
+                    )}
+                  </div>
+
+                  {/* Disabilitas */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Apakah Anda penyandang disabilitas / pendamping penyandang disabilitas? *
+                    </label>
+                    <div className="flex gap-4">
+                      {["Ya", "Tidak"].map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="disabilitas-step0" value={opt}
+                            checked={form.isDisabilitas === opt}
+                            onChange={() => set("isDisabilitas", opt as "Ya" | "Tidak")}
+                            className="accent-[#0E5B73]" />
+                          <span className="text-sm text-gray-700">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {form.isDisabilitas === "Ya" && (
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Disabilitas</label>
+                        <select className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none bg-white"
+                          value={form.jenisDisabilitas} onChange={(e) => set("jenisDisabilitas", e.target.value)}>
+                          <option value="">Pilih jenis</option>
+                          {DISABILITAS_OPTIONS.map((d) => <option key={d}>{d}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="button" onClick={handleDataTambahanNext}
+                    className="w-full py-2.5 rounded-lg font-semibold text-white text-sm transition-opacity hover:opacity-90"
+                    style={{ background: "#0E5B73" }}>
+                    Lanjut ke Penilaian →
+                  </button>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Step 1: Unit Layanan */}
+        {/* ── Step 1: Unit Layanan ── */}
         {step === 1 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
             <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
@@ -283,15 +389,11 @@ export default function SurveyPage() {
               <p className="text-sm text-gray-500 mb-4">Pilih layanan yang Anda gunakan:</p>
               <div className="space-y-3">
                 {UNIT_LAYANAN_OPTIONS.map((opt) => (
-                  <button
-                    key={opt} type="button" onClick={() => set("unitLayanan", opt)}
+                  <button key={opt} type="button" onClick={() => set("unitLayanan", opt)}
                     className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
-                      form.unitLayanan === opt
-                        ? "text-white border-transparent"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-[#0E5B73]"
+                      form.unitLayanan === opt ? "text-white border-transparent" : "border-gray-200 bg-white text-gray-700 hover:border-[#0E5B73]"
                     }`}
-                    style={form.unitLayanan === opt ? { background: "#0E5B73" } : {}}
-                  >
+                    style={form.unitLayanan === opt ? { background: "#0E5B73" } : {}}>
                     {form.unitLayanan === opt ? "✓ " : ""}{opt}
                   </button>
                 ))}
@@ -300,7 +402,7 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 2: Data Diri */}
+        {/* ── Step 2: Data Diri ── */}
         {step === 2 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
             <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
@@ -323,10 +425,12 @@ export default function SurveyPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Usia *</label>
-                  <input type="number" min={15} max={100} placeholder="Tahun"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none"
-                    value={form.age} onChange={(e) => set("age", e.target.value)} />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kelompok Usia *</label>
+                  <select className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none bg-white"
+                    value={form.ageGroup} onChange={(e) => set("ageGroup", e.target.value)}>
+                    <option value="">Pilih usia</option>
+                    {AGE_GROUPS.map((g) => <option key={g}>{g}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin *</label>
@@ -345,6 +449,45 @@ export default function SurveyPage() {
                   {EDUCATION_OPTIONS.map((e) => <option key={e}>{e}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan *</label>
+                <select className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none bg-white"
+                  value={form.pekerjaan} onChange={(e) => set("pekerjaan", e.target.value)}>
+                  <option value="">Pilih pekerjaan</option>
+                  {PEKERJAAN_OPTIONS.map((p) => <option key={p}>{p}</option>)}
+                </select>
+                {form.pekerjaan === "Lainnya" && (
+                  <input type="text" placeholder="Sebutkan pekerjaan Anda"
+                    className="mt-2 w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none"
+                    value={form.pekerjaanLainnya} onChange={(e) => set("pekerjaanLainnya", e.target.value)} />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Apakah Anda penyandang disabilitas / pendamping penyandang disabilitas? *
+                </label>
+                <div className="flex gap-4">
+                  {["Ya", "Tidak"].map((opt) => (
+                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="disabilitas-step2" value={opt}
+                        checked={form.isDisabilitas === opt}
+                        onChange={() => set("isDisabilitas", opt as "Ya" | "Tidak")}
+                        className="accent-[#0E5B73]" />
+                      <span className="text-sm text-gray-700">{opt}</span>
+                    </label>
+                  ))}
+                </div>
+                {form.isDisabilitas === "Ya" && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Disabilitas</label>
+                    <select className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none bg-white"
+                      value={form.jenisDisabilitas} onChange={(e) => set("jenisDisabilitas", e.target.value)}>
+                      <option value="">Pilih jenis</option>
+                      {DISABILITAS_OPTIONS.map((d) => <option key={d}>{d}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="rounded-lg p-4 text-xs" style={{ background: "#f0f8fa", borderLeft: "3px solid #D5C58A" }}>
                 <p className="text-gray-600 mb-2">
                   Data dan informasi yang Bapak/Ibu berikan hanya dipergunakan untuk kepentingan survei
@@ -362,7 +505,7 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 3: Penilaian (9 unsur SKM) */}
+        {/* ── Step 3: Penilaian (19 pertanyaan hybrid) ── */}
         {step === 3 && (
           <div className="space-y-4">
             {bukuTamuId && (
@@ -402,7 +545,7 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Step 4 (housing only): Program-specific questions */}
+        {/* ── Step 4 (housing only): Program-specific questions ── */}
         {isSpecificStep && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
@@ -416,7 +559,7 @@ export default function SurveyPage() {
             {programQuestions.map((q) => (
               <div key={q.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="px-5 py-3 flex items-center gap-2 border-b" style={{ borderColor: "#D5C58A" }}>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded text-white" style={{ background: "#D5C58A", color: "#113F51" }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#D5C58A", color: "#113F51" }}>
                     {q.key}
                   </span>
                   <span className="font-semibold text-sm" style={{ color: "#113F51" }}>{q.label}</span>
@@ -438,49 +581,33 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Final step: Open-ended + Submit */}
+        {/* ── Final step: Kritik & Saran + Submit ── */}
         {isFinalStep && (
           <form onSubmit={submit}>
             <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderBottom: "3px solid #D5C58A" }}>
               <div className="px-6 py-4 border-b" style={{ background: "#113F51" }}>
                 <h2 className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                  Langkah {bukuTamuId ? "3" : String(totalSteps)} — Masukan Anda
+                  Langkah {bukuTamuId ? "3" : String(totalSteps)} — Kritik dan Saran
                 </h2>
               </div>
               <div className="p-6 space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hal apa yang Anda rasa kurang berkenan pada pelayanan kami?
+                    Kritik dan Saran <span className="text-gray-400">(opsional)</span>
                   </label>
-                  <textarea rows={3} placeholder="Tuliskan masukan Anda (opsional)..."
+                  <textarea rows={4} placeholder="Tuliskan kritik dan saran Anda untuk perbaikan layanan kami..."
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none resize-none"
-                    value={form.q10a} onChange={(e) => set("q10a", e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hal apa yang Anda rasa paling berkesan pada pelayanan kami?
-                  </label>
-                  <textarea rows={3} placeholder="Tuliskan kesan Anda (opsional)..."
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none resize-none"
-                    value={form.q10b} onChange={(e) => set("q10b", e.target.value)} />
+                    value={form.kritikSaran} onChange={(e) => set("kritikSaran", e.target.value)} />
                 </div>
 
                 <div className="rounded-lg p-4 text-sm" style={{ background: "#f0f8fa", borderLeft: "3px solid #D5C58A" }}>
                   <p className="font-semibold mb-1" style={{ color: "#113F51" }}>Ringkasan Jawaban:</p>
                   <p className="text-gray-600">Unit Layanan: <span className="font-medium">{form.unitLayanan}</span></p>
-                  <p className="text-gray-600">
-                    Nilai rata-rata SKM:{" "}
-                    <span className="font-medium">
-                      {(([form.q1,form.q2,form.q3,form.q4,form.q5,form.q6,form.q7,form.q8,form.q9]
-                        .reduce((a,b)=>a+b,0)/9)*25).toFixed(1)} / 100
-                    </span>
-                  </p>
-                  {isHousingProgram && Object.keys(form.specificData).length > 0 && (
+                  <p className="text-gray-600">Kelompok Usia: <span className="font-medium">{form.ageGroup}</span></p>
+                  <p className="text-gray-600">Pekerjaan: <span className="font-medium">{effectivePekerjaan || "—"}</span></p>
+                  {previewIKM && (
                     <p className="text-gray-600">
-                      Pertanyaan bantuan:{" "}
-                      <span className="font-medium">
-                        {Object.keys(form.specificData).length} / {programQuestions.length} dijawab
-                      </span>
+                      Nilai rata-rata SKM: <span className="font-medium">{previewIKM} / 100</span>
                     </p>
                   )}
                 </div>

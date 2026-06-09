@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { computeIKM, computeDemographics } from "@/lib/ikm"
-import { SURVEY_QUESTIONS, SURVEY_YEAR, OFFICE_NAME } from "@/lib/constants"
+import { IKM_UNSUR_LABELS, SURVEY_YEAR, OFFICE_NAME } from "@/lib/constants"
 import DashboardCharts from "@/components/dashboard/DashboardCharts"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +12,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-5 pb-24 md:pb-8 max-w-5xl">
-      {/* Page title */}
       <div className="mb-5 pb-3" style={{ borderBottom: "2px solid #D5C58A" }}>
         <h1 className="text-xl font-bold" style={{ color: "#113F51", fontFamily: "Poppins, sans-serif" }}>
           Dashboard SKM
@@ -22,10 +21,8 @@ export default async function DashboardPage() {
 
       {/* IKM Banner */}
       {ikm ? (
-        <div
-          className="rounded-xl p-6 text-white mb-6 shadow-sm overflow-hidden relative"
-          style={{ background: ikm.category.color }}
-        >
+        <div className="rounded-xl p-6 text-white mb-6 shadow-sm overflow-hidden relative"
+          style={{ background: ikm.category.color }}>
           <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "#D5C58A" }} />
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -85,7 +82,8 @@ export default async function DashboardPage() {
           genderData={Object.entries(demo.gender).map(([name, value]) => ({ name, value }))}
           educationData={Object.entries(demo.education).map(([name, value]) => ({ name, value }))}
           ageData={Object.entries(demo.ageGroup).map(([name, value]) => ({ name, value }))}
-          questions={SURVEY_QUESTIONS.map((q) => q.label)}
+          pekerjaanData={Object.entries(demo.pekerjaan).map(([name, value]) => ({ name, value }))}
+          disabilitasData={Object.entries(demo.disabilitas).map(([name, value]) => ({ name, value }))}
         />
       )}
     </div>

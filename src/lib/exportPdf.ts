@@ -1,21 +1,27 @@
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
-import { SURVEY_QUESTIONS, OFFICE_NAME, OFFICE_FULL_NAME, MINISTRY, SURVEY_YEAR } from "./constants"
-import { computeIKM, computeDemographics } from "./ikm"
+import { OFFICE_NAME, OFFICE_FULL_NAME, MINISTRY, SURVEY_YEAR, IKM_UNSUR_LABELS } from "./constants"
+import { computeIKM, computeDemographics, getResponseUnsurScores } from "./ikm"
 
 type ResponseRow = {
   id: number
   createdAt: Date
-  phone: string
-  email: string
-  age: number
-  gender: string
-  education: string
-  unitLayanan: string
-  q1: number; q2: number; q3: number; q4: number; q5: number
-  q6: number; q7: number; q8: number; q9: number
-  q10a: string | null
-  q10b: string | null
+  phone: string; email: string
+  age: number | null; ageGroup: string | null
+  gender: string; education: string; unitLayanan: string
+  pekerjaan: string | null
+  isDisabilitas: boolean | null; jenisDisabilitas: string | null
+  q1: number | null; q2: number | null; q3: number | null
+  q4: number | null; q5: number | null; q6: number | null
+  q7: number | null; q8: number | null; q9: number | null
+  q10a: string | null; q10b: string | null
+  nq1: number | null; nq2: number | null; nq3: number | null
+  nq4: number | null; nq5: number | null; nq6: number | null
+  nq7: number | null; nq8: number | null; nq9: number | null; nq10: number | null
+  nq11a: number | null; nq11b: number | null
+  nq12a: number | null; nq12b: number | null; nq13: number | null
+  nq14: number | null; nq15: number | null
+  nq16a: number | null; nq16b: number | null
 }
 
 const NAVY: [number, number, number] = [26, 58, 107]
@@ -52,7 +58,6 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
   // ── Cover Page ────────────────────────────────────────────────────────────
   doc.setFillColor(...NAVY)
   doc.rect(0, 0, 210, 297, "F")
-
   doc.setFillColor(...GOLD)
   doc.rect(0, 100, 210, 60, "F")
 
@@ -90,107 +95,110 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
   doc.addPage()
   addPageHeader(doc, "BAB I: Pendahuluan")
 
-  doc.setFontSize(13)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
   doc.text("BAB I  PENDAHULUAN", 20, 30)
 
-  doc.setFontSize(11)
-  doc.setFont("helvetica", "bold")
-  doc.text("A. Latar Belakang", 20, 42)
-
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  const bg = doc.splitTextToSize(
-    `Survei Kepuasan Masyarakat (SKM) merupakan kegiatan pengukuran secara komprehensif tentang ` +
-    `tingkat kepuasan masyarakat terhadap kualitas layanan yang diberikan oleh penyelenggara pelayanan publik. ` +
-    `Pelaksanaan SKM didasarkan pada Peraturan Menteri Pendayagunaan Aparatur Negara dan Reformasi Birokrasi ` +
-    `(Permenpan-RB) Nomor 14 Tahun 2017 tentang Pedoman Penyusunan Survei Kepuasan Masyarakat Unit ` +
-    `Penyelenggara Pelayanan Publik. ${OFFICE_NAME} berkomitmen untuk senantiasa meningkatkan kualitas ` +
-    `pelayanan berdasarkan masukan dan penilaian dari masyarakat pengguna layanan.`,
+  doc.setFontSize(11); doc.setFont("helvetica", "bold")
+  doc.text("1.1 Latar Belakang", 20, 42)
+  doc.setFontSize(10); doc.setFont("helvetica", "normal")
+  doc.text(doc.splitTextToSize(
+    `Undang-Undang Nomor 25 Tahun 2009 tentang Pelayanan Publik dan Peraturan Pemerintah Nomor 96 ` +
+    `Tahun 2012 tentang Pelaksanaan Undang-undang Nomor 25 Tahun 2009 tentang Pelayanan Publik, ` +
+    `mengamanatkan penyelenggara wajib mengikutsertakan masyarakat dalam penyelenggaraan Pelayanan ` +
+    `Publik. Untuk menjalankan amanat tersebut, disusun Peraturan Menteri PANRB No. 14 Tahun 2017 ` +
+    `tentang Pedoman Penyusunan Survei Kepuasan Masyarakat (SKM) Unit Penyelenggara Pelayanan Publik.`,
     170
-  )
-  doc.text(bg, 20, 52)
+  ), 20, 52)
 
-  doc.setFontSize(11)
-  doc.setFont("helvetica", "bold")
-  doc.text("B. Dasar Hukum", 20, 105)
-
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  const dasar = [
-    "1. Undang-Undang No. 25 Tahun 2009 tentang Pelayanan Publik",
-    "2. Peraturan Pemerintah No. 96 Tahun 2012 tentang Pelaksanaan UU Pelayanan Publik",
-    "3. Permenpan-RB No. 14 Tahun 2017 tentang Pedoman Penyusunan SKM",
+  doc.setFontSize(11); doc.setFont("helvetica", "bold")
+  doc.text("1.2 Tujuan dan Manfaat", 20, 92)
+  doc.setFontSize(10); doc.setFont("helvetica", "normal")
+  const tujuan = [
+    "a. Mengidentifikasi kelemahan dalam penyelenggaraan pelayanan;",
+    "b. Mengetahui kinerja pelayanan yang telah dilaksanakan secara periodik;",
+    "c. Mengetahui indeks kepuasan masyarakat pada unit pelayanan;",
+    "d. Menjadi dasar penetapan kebijakan maupun perbaikan kualitas pelayanan.",
   ]
-  dasar.forEach((line, i) => doc.text(line, 20, 115 + i * 8))
+  tujuan.forEach((t, i) => doc.text(t, 22, 102 + i * 8))
 
-  doc.setFontSize(11)
-  doc.setFont("helvetica", "bold")
-  doc.text("C. Tujuan", 20, 145)
-
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  const tujuan = doc.splitTextToSize(
-    `SKM ini bertujuan untuk: (1) mengetahui tingkat kepuasan masyarakat terhadap pelayanan ` +
-    `${OFFICE_NAME}; (2) memetakan unsur pelayanan yang perlu ditingkatkan; dan (3) memberikan ` +
-    `rekomendasi perbaikan layanan secara berkelanjutan.`,
+  doc.setFontSize(11); doc.setFont("helvetica", "bold")
+  doc.text("1.3 Metode Pengumpulan Data", 20, 142)
+  doc.setFontSize(10); doc.setFont("helvetica", "normal")
+  doc.text(doc.splitTextToSize(
+    `Pelaksanaan SKM menggunakan kuesioner hybrid (campuran) secara elektronik dan nonelektronik ` +
+    `yang disebarkan kepada pengguna layanan. Kuesioner terdiri atas 19 sub-pertanyaan yang dipetakan ` +
+    `ke dalam 9 unsur pengukuran kepuasan masyarakat berdasarkan Permenpan-RB No. 14 Tahun 2017.`,
     170
-  )
-  doc.text(tujuan, 20, 155)
-
-  // ── BAB II: Pengumpulan Data ──────────────────────────────────────────────
-  doc.addPage()
-  addPageHeader(doc, "BAB II: Pengumpulan Data")
-
-  doc.setFontSize(13)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
-  doc.text("BAB II  PENGUMPULAN DATA", 20, 30)
-
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  const metode = doc.splitTextToSize(
-    `Survei dilaksanakan secara daring melalui aplikasi web SKM ${OFFICE_NAME}. ` +
-    `Responden merupakan pengguna layanan aktif pada ${SURVEY_YEAR}. ` +
-    `Kuesioner terdiri atas 9 (sembilan) unsur pelayanan berdasarkan Permenpan-RB No. 14/2017 ` +
-    `dan 2 pertanyaan terbuka untuk masukan kualitatif.`,
-    170
-  )
-  doc.text(metode, 20, 42)
+  ), 20, 152)
 
   autoTable(doc, {
-    startY: 80,
+    startY: 180,
     head: [["Keterangan", "Isi"]],
     body: [
       ["Jumlah Responden", `${responses.length} orang`],
-      ["Metode Survei", "Daring (online)"],
+      ["Metode Survei", "Hybrid (Elektronik & Nonelektronik)"],
       ["Tahun Survei", SURVEY_YEAR],
       ["Skala Penilaian", "1–4 (Likert 4 poin)"],
-      ["Jumlah Unsur", "9 Unsur (Permenpan-RB No. 14/2017)"],
+      ["Jumlah Unsur IKM", "9 Unsur (Permenpan-RB No. 14/2017)"],
+      ["Jumlah Sub-Pertanyaan", "19 Sub-pertanyaan"],
     ],
     headStyles: { fillColor: NAVY },
     alternateRowStyles: { fillColor: [240, 240, 240] },
   })
 
-  // ── BAB III: Hasil Pengolahan ─────────────────────────────────────────────
+  // ── BAB II: Analisis Responden ────────────────────────────────────────────
   doc.addPage()
-  addPageHeader(doc, "BAB III: Hasil Pengolahan")
+  addPageHeader(doc, "BAB II: Analisis Data SKM")
 
-  doc.setFontSize(13)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
-  doc.text("BAB III  HASIL PENGOLAHAN DATA", 20, 30)
+  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
+  doc.text("BAB II  ANALISIS DATA SKM", 20, 30)
+
+  doc.setFontSize(11); doc.setFont("helvetica", "bold")
+  doc.text("2.1 Analisis Responden", 20, 42)
+
+  function demoRows(counts: Record<string, number>) {
+    const total = Object.values(counts).reduce((a, b) => a + b, 0)
+    return Object.entries(counts).map(([k, v]) => [
+      k, String(v), `${((v / total) * 100).toFixed(1)}%`,
+    ])
+  }
+
+  let demoY = 50
+  const demoSections: Array<{ title: string; rows: string[][] }> = [
+    { title: "Jenis Kelamin", rows: demoRows(demographics.gender) },
+    { title: "Kelompok Usia", rows: demoRows(Object.fromEntries(Object.entries(demographics.ageGroup).filter(([, v]) => v > 0))) },
+    { title: "Pendidikan", rows: demoRows(demographics.education) },
+    ...(Object.keys(demographics.pekerjaan).length > 0 ? [{ title: "Pekerjaan", rows: demoRows(demographics.pekerjaan) }] : []),
+    ...(Object.keys(demographics.disabilitas).length > 0 ? [{ title: "Status Disabilitas", rows: demoRows(demographics.disabilitas) }] : []),
+  ]
+
+  for (const section of demoSections) {
+    autoTable(doc, {
+      startY: demoY,
+      head: [[section.title, "Jumlah", "Persentase"]],
+      body: section.rows,
+      headStyles: { fillColor: NAVY },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      styles: { fontSize: 9 },
+      margin: { left: 20, right: 20 },
+    })
+    demoY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6
+  }
+
+  // ── BAB II: IKM per Unsur ─────────────────────────────────────────────────
+  doc.addPage()
+  addPageHeader(doc, "BAB II: IKM per Unsur")
+
+  doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
+  doc.text("2.2 Indeks Kepuasan Masyarakat Per Unsur Pelayanan", 20, 30)
 
   if (ikm) {
     autoTable(doc, {
-      startY: 40,
+      startY: 38,
       head: [["No", "Unsur Pelayanan", "NRR", "IKM per Unsur", "Kategori"]],
       body: ikm.unsur.map((u, i) => [
-        i + 1,
-        `${u.key}: ${u.label}`,
-        u.nrr.toFixed(2),
-        u.ikm.toFixed(2),
+        i + 1, `${u.key}: ${u.label}`,
+        u.nrr.toFixed(2), u.ikm.toFixed(2),
         `${u.category.label} – ${u.category.name}`,
       ]),
       foot: [["", "IKM UNIT LAYANAN", "", ikm.ikmUnit.toFixed(2), `${ikm.category.label} – ${ikm.category.name}`]],
@@ -198,118 +206,101 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
       footStyles: { fillColor: GOLD, textColor: [0, 0, 0], fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 248, 248] },
     })
-  }
 
-  // ── BAB IV: Analisis ──────────────────────────────────────────────────────
-  doc.addPage()
-  addPageHeader(doc, "BAB IV: Analisis")
-
-  doc.setFontSize(13)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
-  doc.text("BAB IV  ANALISIS", 20, 30)
-
-  if (ikm) {
     const best = [...ikm.unsur].sort((a, b) => b.ikm - a.ikm).slice(0, 3)
     const worst = [...ikm.unsur].sort((a, b) => a.ikm - b.ikm).slice(0, 3)
 
-    doc.setFontSize(11)
-    doc.setFont("helvetica", "bold")
-    doc.text("A. Unsur dengan Nilai Tertinggi", 20, 42)
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
+    const afterY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12
+
+    doc.setFontSize(11); doc.setFont("helvetica", "bold")
+    doc.text("2.3 Analisis Masalah dan Rencana Tindak Lanjut", 20, afterY)
+    doc.setFontSize(10); doc.setFont("helvetica", "normal")
+    doc.text("Unsur dengan nilai tertinggi:", 20, afterY + 10)
     best.forEach((u, i) => {
-      doc.text(`${i + 1}. ${u.key}: ${u.label} — IKM ${u.ikm.toFixed(2)} (${u.category.name})`, 25, 52 + i * 8)
+      doc.text(`${i + 1}. ${u.key}: ${u.label} — IKM ${u.ikm.toFixed(2)} (${u.category.name})`, 25, afterY + 18 + i * 8)
     })
-
-    doc.setFontSize(11)
-    doc.setFont("helvetica", "bold")
-    doc.text("B. Unsur yang Perlu Ditingkatkan", 20, 82)
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
+    doc.text("Unsur yang perlu ditingkatkan:", 20, afterY + 48)
     worst.forEach((u, i) => {
-      doc.text(`${i + 1}. ${u.key}: ${u.label} — IKM ${u.ikm.toFixed(2)} (${u.category.name})`, 25, 92 + i * 8)
-    })
-
-    doc.setFontSize(11)
-    doc.setFont("helvetica", "bold")
-    doc.text("C. Profil Demografi Responden", 20, 122)
-
-    const genderData = Object.entries(demographics.gender).map(([k, v]) => [k, `${v} orang`])
-    const educData = Object.entries(demographics.education).map(([k, v]) => [k, `${v} orang`])
-
-    autoTable(doc, {
-      startY: 130,
-      head: [["Jenis Kelamin", "Jumlah"]],
-      body: genderData,
-      headStyles: { fillColor: NAVY },
-      tableWidth: 80,
-      margin: { left: 20 },
-    })
-
-    autoTable(doc, {
-      startY: 130,
-      head: [["Pendidikan", "Jumlah"]],
-      body: educData,
-      headStyles: { fillColor: NAVY },
-      tableWidth: 80,
-      margin: { left: 110 },
+      doc.text(`${i + 1}. ${u.key}: ${u.label} — IKM ${u.ikm.toFixed(2)} (${u.category.name})`, 25, afterY + 56 + i * 8)
     })
   }
 
-  // ── BAB V: Kesimpulan ─────────────────────────────────────────────────────
+  // ── BAB III: Tindak Lanjut ────────────────────────────────────────────────
   doc.addPage()
-  addPageHeader(doc, "BAB V: Kesimpulan")
+  addPageHeader(doc, "BAB III: Hasil Tindak Lanjut")
 
-  doc.setFontSize(13)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
-  doc.text("BAB V  KESIMPULAN DAN REKOMENDASI", 20, 30)
+  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
+  doc.text("BAB III  HASIL TINDAK LANJUT SKM PERIODE SEBELUMNYA", 20, 30)
 
   if (ikm) {
-    const kesimpulan = doc.splitTextToSize(
+    autoTable(doc, {
+      startY: 40,
+      head: [["No", "Unsur", "IKM"]],
+      body: ikm.unsur.map((u, i) => [i + 1, u.label, u.ikm.toFixed(2)]),
+      headStyles: { fillColor: NAVY },
+    })
+  }
+
+  autoTable(doc, {
+    startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10,
+    head: [["No", "Rencana Tindak Lanjut", "Status", "Deskripsi Tindak Lanjut"]],
+    body: [["1", "", "", ""], ["2", "", "", ""], ["3", "", "", ""]],
+    headStyles: { fillColor: NAVY },
+    styles: { minCellHeight: 20 },
+  })
+
+  // ── BAB IV: Kesimpulan ────────────────────────────────────────────────────
+  doc.addPage()
+  addPageHeader(doc, "BAB IV: Kesimpulan")
+
+  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
+  doc.text("BAB IV  KESIMPULAN", 20, 30)
+
+  if (ikm) {
+    const sortedDesc = [...ikm.unsur].sort((a, b) => b.ikm - a.ikm)
+    const sortedAsc = [...ikm.unsur].sort((a, b) => a.ikm - b.ikm)
+    doc.setFontSize(10); doc.setFont("helvetica", "normal")
+    doc.text(doc.splitTextToSize(
       `Berdasarkan hasil Survei Kepuasan Masyarakat (SKM) Tahun ${SURVEY_YEAR} yang melibatkan ` +
       `${ikm.n} responden pengguna layanan ${OFFICE_NAME}, diperoleh Indeks Kepuasan Masyarakat ` +
       `(IKM) Unit Layanan sebesar ${ikm.ikmUnit.toFixed(2)} yang masuk dalam kategori ` +
       `"${ikm.category.label} – ${ikm.category.name}". ` +
-      `Hasil ini mencerminkan bahwa secara umum masyarakat pengguna layanan merasa ` +
-      `${ikm.category.name.toLowerCase()} terhadap kualitas pelayanan ${OFFICE_NAME}. ` +
-      `Unsur dengan nilai IKM tertinggi adalah ${ikm.unsur.sort((a,b)=>b.ikm-a.ikm)[0].label} ` +
-      `(${ikm.unsur.sort((a,b)=>b.ikm-a.ikm)[0].ikm.toFixed(2)}), sementara unsur yang masih ` +
-      `perlu mendapat perhatian adalah ${ikm.unsur.sort((a,b)=>a.ikm-b.ikm)[0].label} ` +
-      `(${ikm.unsur.sort((a,b)=>a.ikm-b.ikm)[0].ikm.toFixed(2)}). ` +
-      `Diharapkan hasil survei ini dapat menjadi dasar perbaikan dan peningkatan kualitas ` +
-      `pelayanan ${OFFICE_NAME} secara berkelanjutan.`,
+      `Unsur dengan nilai IKM tertinggi adalah ${sortedDesc[0].label} (${sortedDesc[0].ikm.toFixed(2)}), ` +
+      `sementara unsur yang masih perlu mendapat perhatian adalah ${sortedAsc[0].label} (${sortedAsc[0].ikm.toFixed(2)}). ` +
+      `Unsur prioritas perbaikan: ${sortedAsc.slice(0, 3).map(u => u.label).join(", ")}.`,
       170
-    )
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
-    doc.text(kesimpulan, 20, 42)
+    ), 20, 42)
   }
 
-  // ── Lampiran: Tabel Data Lengkap ──────────────────────────────────────────
+  // ── Lampiran: Data Responden ──────────────────────────────────────────────
   doc.addPage()
   addPageHeader(doc, "Lampiran: Data Responden")
 
-  doc.setFontSize(11)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0)
   doc.text("LAMPIRAN — DATA RESPONDEN", 20, 30)
 
   autoTable(doc, {
     startY: 38,
     head: [[
-      "No", "Tanggal", "Gender", "Usia", "Pendidikan",
-      "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9",
+      "No", "Tanggal", "Gender", "Usia",
+      ...IKM_UNSUR_LABELS.map((u) => u.key),
+      "IKM",
     ]],
-    body: responses.map((r, i) => [
-      i + 1,
-      r.createdAt.toLocaleDateString("id-ID"),
-      r.gender === "Laki-laki" ? "L" : "P",
-      r.age,
-      r.education.split(" ")[0],
-      r.q1, r.q2, r.q3, r.q4, r.q5, r.q6, r.q7, r.q8, r.q9,
-    ]),
+    body: responses.map((r, i) => {
+      const scores = getResponseUnsurScores(r)
+      const valid = scores.filter((s): s is number => s != null)
+      const ikmAvg = valid.length > 0
+        ? (valid.reduce((a, b) => a + b, 0) / valid.length) * 25
+        : null
+      return [
+        i + 1,
+        r.createdAt.toLocaleDateString("id-ID"),
+        r.gender === "Laki-laki" ? "L" : "P",
+        r.ageGroup ?? r.age ?? "—",
+        ...scores.map((s) => s != null ? s.toFixed(1) : "—"),
+        ikmAvg != null ? ikmAvg.toFixed(1) : "—",
+      ]
+    }),
     headStyles: { fillColor: NAVY },
     styles: { fontSize: 7, cellPadding: 2 },
     alternateRowStyles: { fillColor: [248, 248, 248] },
