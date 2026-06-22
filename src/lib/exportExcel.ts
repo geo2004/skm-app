@@ -5,6 +5,7 @@ import { computeIKM, getResponseUnsurScores } from "./ikm"
 type ResponseRow = {
   id: number
   createdAt: Date
+  nama: string | null; keperluan: string | null
   phone: string; email: string
   age: number | null; ageGroup: string | null
   gender: string; education: string; unitLayanan: string
@@ -50,7 +51,7 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   // ── Sheet 1: Data Responden ───────────────────────────────────────────────
   const ws1 = wb.addWorksheet("Data Responden")
 
-  ws1.mergeCells("A1:V1")
+  ws1.mergeCells("A1:X1")
   const t1 = ws1.getCell("A1")
   t1.value = `DATA RESPONDEN SKM ${OFFICE_NAME} TAHUN ${SURVEY_YEAR}`
   t1.font = { bold: true, size: 12, color: { argb: WHITE } }
@@ -59,8 +60,9 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   ws1.getRow(1).height = 30
 
   const headers = [
-    "No", "Tanggal", "Nomor HP", "Email", "Usia/Kelompok", "Jenis Kelamin",
-    "Pendidikan", "Pekerjaan", "Disabilitas", "Unit Layanan",
+    "No", "Tanggal", "Nama", "Nomor HP", "Email",
+    "Unit Layanan", "Keperluan",
+    "Usia/Kelompok", "Jenis Kelamin", "Pendidikan", "Pekerjaan", "Disabilitas",
     ...IKM_UNSUR_LABELS.map((u) => `${u.key}: ${u.label}`),
     "IKM", "Kritik & Saran",
   ]
@@ -85,15 +87,17 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
     const row = ws1.addRow([
       idx + 1,
       r.createdAt.toLocaleDateString("id-ID"),
-      r.phone, r.email, ageDisplay, r.gender, r.education,
-      r.pekerjaan ?? "", disabilitasDisplay, r.unitLayanan,
+      r.nama ?? "", r.phone, r.email,
+      r.unitLayanan, r.keperluan ?? "",
+      ageDisplay, r.gender, r.education,
+      r.pekerjaan ?? "", disabilitasDisplay,
       ...unsurScores.map((s) => s != null ? Math.round(s * 100) / 100 : ""),
       ikmAvg != null ? Math.round(ikmAvg * 100) / 100 : "",
       r.q10a ?? "",
     ])
 
-    // Color-code unsur score columns (cols K–S = 11–19)
-    for (let col = 11; col <= 19; col++) {
+    // Color-code unsur score columns (cols M–U = 13–21)
+    for (let col = 13; col <= 21; col++) {
       const cell = row.getCell(col)
       const val = cell.value as number | string
       cell.alignment = { horizontal: "center" }
@@ -109,22 +113,26 @@ export async function buildExcelWorkbook(responses: ResponseRow[]): Promise<Exce
   })
 
   // Column widths
+  // 1:No 2:Tanggal 3:Nama 4:Nomor HP 5:Email 6:Unit Layanan 7:Keperluan
+  // 8:Usia 9:Gender 10:Pendidikan 11:Pekerjaan 12:Disabilitas
+  // 13–21:Unsur 22:IKM 23:Kritik & Saran
   ws1.getColumn(1).width = 5
   ws1.getColumn(2).width = 14
-  ws1.getColumn(3).width = 16
-  ws1.getColumn(4).width = 24
-  ws1.getColumn(5).width = 14
-  ws1.getColumn(6).width = 12
-  ws1.getColumn(7).width = 16
-  ws1.getColumn(8).width = 18
-  ws1.getColumn(9).width = 14
-  ws1.getColumn(10).width = 32
-  for (let i = 11; i <= 19; i++) ws1.getColumn(i).width = 10
-  ws1.getColumn(20).width = 8
-  ws1.getColumn(21).width = 35
-  ws1.getColumn(22).width = 35
+  ws1.getColumn(3).width = 24
+  ws1.getColumn(4).width = 16
+  ws1.getColumn(5).width = 24
+  ws1.getColumn(6).width = 32
+  ws1.getColumn(7).width = 28
+  ws1.getColumn(8).width = 14
+  ws1.getColumn(9).width = 12
+  ws1.getColumn(10).width = 16
+  ws1.getColumn(11).width = 18
+  ws1.getColumn(12).width = 14
+  for (let i = 13; i <= 21; i++) ws1.getColumn(i).width = 10
+  ws1.getColumn(22).width = 8
+  ws1.getColumn(23).width = 40
 
-  ws1.autoFilter = { from: "A2", to: "T2" }
+  ws1.autoFilter = { from: "A2", to: "W2" }
   ws1.views = [{ state: "frozen", ySplit: 2 }]
 
   // ── Sheet 2: Rekapitulasi IKM ─────────────────────────────────────────────

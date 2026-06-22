@@ -6,6 +6,7 @@ import { computeIKM, computeDemographics, getResponseUnsurScores } from "./ikm"
 type ResponseRow = {
   id: number
   createdAt: Date
+  nama: string | null; keperluan: string | null
   phone: string; email: string
   age: number | null; ageGroup: string | null
   gender: string; education: string; unitLayanan: string
@@ -282,7 +283,7 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
   autoTable(doc, {
     startY: 38,
     head: [[
-      "No", "Tanggal", "Gender", "Usia",
+      "No", "Nama", "Tanggal", "Unit Layanan", "Keperluan", "Gender", "Usia",
       ...IKM_UNSUR_LABELS.map((u) => u.key),
       "IKM",
     ]],
@@ -294,7 +295,10 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
         : null
       return [
         i + 1,
+        r.nama ?? "—",
         r.createdAt.toLocaleDateString("id-ID"),
+        r.unitLayanan,
+        r.keperluan ?? "—",
         r.gender === "Laki-laki" ? "L" : "P",
         r.ageGroup ?? r.age ?? "—",
         ...scores.map((s) => s != null ? s.toFixed(1) : "—"),
@@ -302,8 +306,17 @@ export function buildPdfReport(responses: ResponseRow[]): Buffer {
       ]
     }),
     headStyles: { fillColor: NAVY },
-    styles: { fontSize: 7, cellPadding: 2 },
+    styles: { fontSize: 6.5, cellPadding: 1.5 },
     alternateRowStyles: { fillColor: [248, 248, 248] },
+    columnStyles: {
+      0: { cellWidth: 8 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: 8 },
+      6: { cellWidth: 12 },
+    },
   })
 
   addPageFooter(doc)

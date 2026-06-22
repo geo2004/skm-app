@@ -21,12 +21,14 @@ export async function POST(req: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
 
   const {
-    phone, email, ageGroup, gender, education, unitLayanan,
-    pekerjaan, isDisabilitas, jenisDisabilitas,
+    nama, phone, email, ageGroup, gender, education, unitLayanan,
+    keperluan, pekerjaan, isDisabilitas, jenisDisabilitas,
     q10a, specificData, bukuTamuId,
   } = body
 
   // --- Validate demographics ---
+  if (!nama || typeof nama !== "string" || nama.trim().length < 2)
+    return NextResponse.json({ error: "Nama tidak valid" }, { status: 400 })
   if (!phone || typeof phone !== "string" || phone.trim().length < 8)
     return NextResponse.json({ error: "Nomor HP tidak valid" }, { status: 400 })
   if (!email || typeof email !== "string" || !email.includes("@"))
@@ -63,12 +65,14 @@ export async function POST(req: NextRequest) {
 
   const response = await prisma.response.create({
     data: {
+      nama: nama.trim(),
       phone: phone.trim(),
       email: email.trim(),
       ageGroup,
       gender,
       education,
       unitLayanan,
+      keperluan: typeof keperluan === "string" && keperluan.trim() ? keperluan.trim() : null,
       pekerjaan: pekerjaan.trim(),
       isDisabilitas,
       jenisDisabilitas: isDisabilitas && jenisDisabilitas ? String(jenisDisabilitas) : null,

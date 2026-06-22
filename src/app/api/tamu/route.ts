@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   const record = await prisma.bukuTamu.findFirst({
     where: { phone, createdAt: { gte: todayStart } },
     orderBy: { createdAt: "desc" },
-    select: { id: true, nama: true, email: true, age: true, gender: true, education: true, unitLayanan: true },
+    select: { id: true, nama: true, email: true, age: true, gender: true, education: true, unitLayanan: true, keperluan: true },
   })
 
   if (!record) return NextResponse.json({ found: false }, { status: 200 })

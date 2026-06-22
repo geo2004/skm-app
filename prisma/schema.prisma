@@ -59,6 +59,10 @@ model Response {
   // Pertanyaan khusus program bantuan perumahan (JSON)
   specificData String?
 
+  // Identitas responden (wajib per Permenpan-RB No. 14/2017)
+  nama      String?
+  keperluan String?
+
   // Link ke Buku Tamu (opsional)
   bukuTamuId Int?      @unique
   bukuTamu   BukuTamu? @relation(fields: [bukuTamuId], references: [id])

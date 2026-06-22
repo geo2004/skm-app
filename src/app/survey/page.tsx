@@ -23,6 +23,7 @@ const LOGO_URL = "/logo_pkp.png"
 
 type FormData = {
   unitLayanan: string
+  nama: string; keperluan: string
   phone: string; email: string; ageGroup: string; gender: string
   education: string; pekerjaan: string; pekerjaanLainnya: string
   isDisabilitas: "" | "Ya" | "Tidak"; jenisDisabilitas: string
@@ -36,7 +37,8 @@ type FormData = {
 }
 
 const EMPTY: FormData = {
-  unitLayanan: "", phone: "", email: "", ageGroup: "", gender: "",
+  unitLayanan: "", nama: "", keperluan: "",
+  phone: "", email: "", ageGroup: "", gender: "",
   education: "", pekerjaan: "", pekerjaanLainnya: "",
   isDisabilitas: "", jenisDisabilitas: "", consent: false,
   nq1: 0, nq2: 0, nq3: 0, nq4: 0, nq5: 0,
@@ -107,12 +109,14 @@ export default function SurveyPage() {
         const ageGrp = data.age ? getAgeGroup(data.age) : ""
         setForm((f) => ({
           ...f,
+          nama: data.nama ?? "",
           phone: data.phone ?? lookupPhone.trim(),
           email: data.email ?? "",
           ageGroup: ageGrp,
           gender: data.gender ?? "",
           education: edu,
           unitLayanan: data.unitLayanan ?? "",
+          keperluan: data.keperluan ?? "",
           consent: true,
         }))
         setLookupResult("found")
@@ -128,6 +132,7 @@ export default function SurveyPage() {
   }
 
   function handleDataTambahanNext() {
+    if (!form.keperluan.trim()) { setError("Isi keperluan / tujuan kunjungan."); return }
     if (!form.pekerjaan) { setError("Pilih pekerjaan."); return }
     if (form.pekerjaan === "Lainnya" && !form.pekerjaanLainnya.trim()) {
       setError("Isi pekerjaan Lainnya."); return
@@ -150,6 +155,8 @@ export default function SurveyPage() {
     if (step === 0) return "" // handled separately for found/not-found sub-states
     if (step === 1 && !form.unitLayanan) return "Pilih unit layanan terlebih dahulu."
     if (step === 2) {
+      if (!form.nama || form.nama.trim().length < 2) return "Nama tidak valid."
+      if (!form.keperluan || !form.keperluan.trim()) return "Isi keperluan / tujuan kunjungan."
       if (!form.phone || form.phone.trim().length < 8) return "Nomor HP tidak valid."
       if (!form.email || !form.email.includes("@")) return "Email tidak valid."
       if (!form.ageGroup) return "Pilih kelompok usia."
@@ -191,12 +198,14 @@ export default function SurveyPage() {
     setError(""); setSubmitting(true)
     try {
       const payload = {
+        nama: form.nama,
         phone: form.phone,
         email: form.email,
         ageGroup: form.ageGroup,
         gender: form.gender,
         education: form.education,
         unitLayanan: form.unitLayanan,
+        keperluan: form.keperluan || null,
         pekerjaan: effectivePekerjaan,
         isDisabilitas: form.isDisabilitas === "Ya",
         jenisDisabilitas: form.isDisabilitas === "Ya" && form.jenisDisabilitas
@@ -323,6 +332,14 @@ export default function SurveyPage() {
                     <p className="text-green-600 text-xs mt-1">Lengkapi data berikut untuk melanjutkan ke penilaian.</p>
                   </div>
 
+                  {/* Keperluan */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Keperluan / Tujuan Kunjungan *</label>
+                    <input type="text" placeholder="Contoh: Konsultasi teknis perumahan"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+                      value={form.keperluan} onChange={(e) => set("keperluan", e.target.value)} />
+                  </div>
+
                   {/* Pekerjaan */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan *</label>
@@ -411,6 +428,18 @@ export default function SurveyPage() {
               </h2>
             </div>
             <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap *</label>
+                <input type="text" placeholder="Nama sesuai identitas"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+                  value={form.nama} onChange={(e) => set("nama", e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Keperluan / Tujuan Kunjungan *</label>
+                <input type="text" placeholder="Contoh: Konsultasi teknis perumahan"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+                  value={form.keperluan} onChange={(e) => set("keperluan", e.target.value)} />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP *</label>
                 <input type="tel" placeholder="08xxxxxxxxxx"
